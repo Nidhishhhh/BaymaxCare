@@ -1,0 +1,4876 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset=utf8>
+  <meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <style>
+    :root {
+      color-scheme: light;
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px)
+    }
+
+    html {
+      scroll-padding-top: env(safe-area-inset-top, 0px)
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font: 14px -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #fff;
+      color: #000
+    }
+
+    img {
+      max-width: 100%
+    }
+
+    [hidden]:not([hidden=until-found i]) {
+      display: none !important
+    }
+  </style>
+</head>
+
+<body>
+  <title>BaymaxCare Dashboard — Doctor</title>
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=IBM+Plex+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600&display=swap">
+  <style>
+    /* Layout: sticky patient header; live vitals and movement trend on the left; care actions (meds, camera, voice) in a right rail; incident log across the bottom. */
+    :root {
+      --bg: #edf4f3;
+      --surface: #ffffff;
+      --surface-2: #f4f9f8;
+      --line: #d8e5e3;
+      --fg: #13302e;
+      --muted: #587471;
+      --teal: #0b7a7c;
+      --on-teal: #ffffff;
+      --teal-soft: #d6eeed;
+      --mint: #58c28c;
+      --amber: #a86400;
+      --amber-soft: #fcefd2;
+      --red: #bb2d24;
+      --red-soft: #fbe1de;
+      --green: #1b7f52;
+      --green-soft: #dbf2e5;
+      --on-signal: #ffffff;
+      --cam-wall: #cfe3e0;
+      --cam-floor: #b3ccc8;
+      --cam-win: #eaf5fb;
+      --cam-chair: #6b9b97;
+      --cam-ink: #3b6561;
+      --shadow: 0 1px 2px rgba(19, 48, 46, .06), 0 8px 24px rgba(19, 48, 46, .06);
+      --f-display: "Bricolage Grotesque", system-ui, sans-serif;
+      --f-body: "Schibsted Grotesk", system-ui, sans-serif;
+      --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0b1a19;
+        --surface: #122725;
+        --surface-2: #173230;
+        --line: #24423f;
+        --fg: #e2f1ef;
+        --muted: #8db0ac;
+        --teal: #4fc9cb;
+        --on-teal: #04201f;
+        --teal-soft: #15403f;
+        --mint: #6fd8a0;
+        --amber: #f2b34f;
+        --amber-soft: #3b2d11;
+        --red: #ff7f74;
+        --red-soft: #45221f;
+        --green: #5ad79c;
+        --green-soft: #143a29;
+        --on-signal: #1c1305;
+        --cam-wall: #223a38;
+        --cam-floor: #1a2e2c;
+        --cam-win: #2d4a52;
+        --cam-chair: #3f6a66;
+        --cam-ink: #86b5b0;
+        --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+        color-scheme: dark
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0b1a19;
+      --surface: #122725;
+      --surface-2: #566968;
+      --line: #24423f;
+      --fg: #e2f1ef;
+      --muted: #8db0ac;
+      --teal: #4fc9cb;
+      --on-teal: #04201f;
+      --teal-soft: #15403f;
+      --mint: #6fd8a0;
+      --amber: #f2b34f;
+      --amber-soft: #3b2d11;
+      --red: #ff7f74;
+      --red-soft: #45221f;
+      --green: #5ad79c;
+      --green-soft: #143a29;
+      --on-signal: #1c1305;
+      --cam-wall: #223a38;
+      --cam-floor: #1a2e2c;
+      --cam-win: #2d4a52;
+      --cam-chair: #3f6a66;
+      --cam-ink: #86b5b0;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+      color-scheme: dark
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font: 400 14px/1.45 var(--f-body);
+      padding-block: 0 32px
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0 0 auto;
+      height: env(safe-area-inset-top, 0px);
+      z-index: 10;
+      background: var(--surface)
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin-inline: auto;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px))
+    }
+
+    .sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap
+    }
+
+    h1 {
+      font: 600 20px/1.15 var(--f-display);
+      margin: 0
+    }
+
+    h2 {
+      font: 600 16px/1.2 var(--f-display);
+      margin: 0
+    }
+
+    h3 {
+      font: 600 13px/1.2 var(--f-display);
+      margin: 0
+    }
+
+    p {
+      margin: 0
+    }
+
+    .muted {
+      color: var(--muted)
+    }
+
+    /* header */
+    .top {
+      position: sticky;
+      top: env(safe-area-inset-top, 0px);
+      z-index: 9;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line)
+    }
+
+    .top-in {
+      display: flex;
+      align-items: center;
+      gap: 12px 20px;
+      flex-wrap: wrap;
+      padding-block: 12px
+    }
+
+    .who {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1 1 220px
+    }
+
+    .who p {
+      font-size: 12.5px;
+      color: var(--muted)
+    }
+
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--teal-soft);
+      color: var(--teal);
+      font: 600 15px var(--f-display);
+      flex: none
+    }
+
+    .avatar.sm {
+      width: 32px;
+      height: 32px;
+      font-size: 12px
+    }
+
+    .conn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 99px;
+      font: 600 12.5px var(--f-body);
+      background: var(--green-soft);
+      color: var(--green)
+    }
+
+    .conn .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: blink 1.6s infinite
+    }
+
+    .conn[data-s="offline"] {
+      background: var(--amber-soft);
+      color: var(--amber)
+    }
+
+    .conn[data-s="sync"] {
+      background: var(--teal-soft);
+      color: var(--teal)
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: .35
+      }
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .uname {
+      font-weight: 600;
+      font-size: 13px
+    }
+
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font: 600 12px var(--f-display);
+      padding: 5px 11px;
+      border-radius: 20px;
+      white-space: nowrap;
+      letter-spacing: .02em
+    }
+
+    .doctor-badge {
+      background: var(--teal-soft);
+      color: var(--teal);
+      border: 1px solid color-mix(in srgb, var(--teal) 30%, var(--line))
+    }
+
+    .guardian-badge {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border: 1px solid color-mix(in srgb, var(--amber) 30%, var(--line))
+    }
+
+    @media(max-width:700px) {
+      .top {
+        position: static
+      }
+
+      .uname {
+        display: none
+      }
+    }
+
+    /* controls */
+    select,
+    input[type=text] {
+      font: 500 13px var(--f-body);
+      color: var(--fg);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      min-height: 38px
+    }
+
+    .btn {
+      font: 600 13px var(--f-body);
+      border-radius: 10px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      cursor: pointer;
+      min-height: 38px
+    }
+
+    .btn.primary {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: var(--on-teal)
+    }
+
+    .btn.signal {
+      background: var(--fg);
+      border-color: var(--fg);
+      color: var(--bg)
+    }
+
+    .btn[disabled] {
+      opacity: .5;
+      cursor: not-allowed
+    }
+
+    .btn.sm {
+      padding: 6px 10px;
+      min-height: 30px;
+      font-size: 12px
+    }
+
+    .btn:focus-visible,
+    .tog:focus-visible,
+    .seg button:focus-visible,
+    select:focus-visible,
+    input:focus-visible,
+    .chip:focus-visible {
+      outline: 2px solid var(--teal);
+      outline-offset: 2px
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px
+    }
+
+    .chip {
+      font: 600 12px var(--f-body);
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      border-radius: 99px;
+      padding: 6px 10px;
+      cursor: pointer
+    }
+
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 2px;
+      background: var(--surface-2)
+    }
+
+    .seg button {
+      border: 0;
+      background: none;
+      color: var(--muted);
+      font: 600 12px var(--f-body);
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer
+    }
+
+    .seg button[aria-pressed="true"] {
+      background: var(--surface);
+      color: var(--fg);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .14)
+    }
+
+    /* structure */
+    .main {
+      padding-block: 16px 0
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px
+    }
+
+    @media(min-width:1000px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr) 360px
+      }
+    }
+
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      min-width: 0
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px
+    }
+
+    .sim {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      color: var(--muted);
+      font-size: 12.5px
+    }
+
+    .sim b {
+      font: 600 11px var(--f-body);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-right: 4px
+    }
+
+    /* alert */
+    .alert {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 14px 16px;
+      align-items: center;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid;
+      margin-bottom: 16px
+    }
+
+    .alert.verifying {
+      background: var(--amber-soft);
+      border-color: var(--amber)
+    }
+
+    .alert.critical {
+      background: var(--red-soft);
+      border-color: var(--red);
+      animation: alarm 1.4s infinite
+    }
+
+    @keyframes alarm {
+      50% {
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--red) 22%, transparent)
+      }
+    }
+
+    .al-ic {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font: 700 22px var(--f-display);
+      color: var(--on-signal)
+    }
+
+    .verifying .al-ic {
+      background: var(--amber)
+    }
+
+    .critical .al-ic {
+      background: var(--red)
+    }
+
+    .al-p {
+      margin-top: 4px;
+      max-width: 62ch
+    }
+
+    .bar {
+      height: 6px;
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--amber) 22%, transparent);
+      margin-top: 10px;
+      overflow: hidden
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      background: var(--amber);
+      transition: width .25s linear
+    }
+
+    .al-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px
+    }
+
+    .count {
+      font: 600 40px/1 var(--f-display);
+      font-variant-numeric: tabular-nums
+    }
+
+    .contacts {
+      list-style: none;
+      margin: 8px 0 0;
+      padding: 0;
+      display: flex;
+      gap: 6px 16px;
+      flex-wrap: wrap;
+      font-size: 13px
+    }
+
+    .contacts span {
+      color: var(--muted)
+    }
+
+    @media(max-width:700px) {
+      .alert {
+        grid-template-columns: auto minmax(0, 1fr)
+      }
+
+      .al-side {
+        grid-column: 1/-1;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap
+      }
+    }
+
+    /* metric cards */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px
+    }
+
+    @media(min-width:1300px) {
+      .metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr))
+      }
+    }
+
+    .metric {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px
+    }
+
+    .m-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap
+    }
+
+    .m-label {
+      font: 600 11.5px var(--f-body);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted)
+    }
+
+    .m-val {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px
+    }
+
+    .num {
+      font: 600 34px/1 var(--f-display);
+      font-variant-numeric: tabular-nums
+    }
+
+    .unit {
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .m-sub {
+      color: var(--muted);
+      font-size: 12.5px;
+      min-height: 2.9em
+    }
+
+    .m-slot {
+      height: 44px;
+      display: flex;
+      align-items: center
+    }
+
+    .pill {
+      font: 600 11px/1 var(--f-body);
+      padding: 5px 8px;
+      border-radius: 99px;
+      letter-spacing: .02em;
+      white-space: nowrap
+    }
+
+    .pill.ok,
+    .badge.resolved {
+      background: var(--green-soft);
+      color: var(--green)
+    }
+
+    .pill.warn,
+    .badge.pending {
+      background: var(--amber-soft);
+      color: var(--amber)
+    }
+
+    .pill.crit,
+    .badge.critical {
+      background: var(--red-soft);
+      color: var(--red)
+    }
+
+    .stale .num {
+      opacity: .45
+    }
+
+    .stale-note {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      margin-bottom: 12px
+    }
+
+    .spark {
+      position: relative;
+      width: 100%;
+      height: 44px
+    }
+
+    .spark svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible
+    }
+
+    .spark .line {
+      fill: none;
+      stroke: var(--teal);
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+      stroke-linejoin: round;
+      transition: stroke .3s ease;
+    }
+
+    .spark .area {
+      fill: var(--teal);
+      opacity: .12;
+      transition: fill .3s ease, opacity .3s ease;
+    }
+
+    .dot-end {
+      position: absolute;
+      right: -4px;
+      width: 9px;
+      height: 9px;
+      margin-top: -4.5px;
+      border-radius: 50%;
+      background: var(--teal);
+      animation: ping var(--beat, .8s) infinite;
+      transition: background .3s ease;
+    }
+
+    @keyframes ping {
+      0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--teal) 55%, transparent)
+      }
+
+      100% {
+        box-shadow: 0 0 0 10px transparent
+      }
+    }
+
+    .spark.warn .line {
+      stroke: var(--amber);
+    }
+
+    .spark.warn .area {
+      fill: var(--amber);
+      opacity: .16;
+    }
+
+    .spark.warn .dot-end {
+      background: var(--amber);
+      animation: ping-warn var(--beat, .8s) infinite;
+    }
+
+    @keyframes ping-warn {
+      0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--amber) 60%, transparent);
+      }
+
+      100% {
+        box-shadow: 0 0 0 10px transparent;
+      }
+    }
+
+    .spark.crit .line {
+      stroke: var(--red);
+    }
+
+    .spark.crit .area {
+      fill: var(--red);
+      opacity: .2;
+    }
+
+    .spark.crit .dot-end {
+      background: var(--red);
+      animation: ping-crit var(--beat, .8s) infinite;
+    }
+
+    @keyframes ping-crit {
+      0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 70%, transparent);
+      }
+
+      100% {
+        box-shadow: 0 0 0 10px transparent;
+      }
+    }
+
+    .heart {
+      width: 22px;
+      height: 22px;
+      color: var(--teal);
+      flex: none;
+      animation: beat var(--beat, .8s) infinite;
+      transition: color .3s ease;
+    }
+
+    .heart.warn {
+      color: var(--amber);
+    }
+
+    .heart.crit {
+      color: var(--red);
+    }
+
+    .spo-icon {
+      width: 22px;
+      height: 22px;
+      color: var(--teal);
+      flex: none;
+      transition: color .3s ease;
+    }
+
+    .spo-icon.warn {
+      color: var(--amber);
+    }
+
+    .spo-icon.crit {
+      color: var(--red);
+    }
+
+    @keyframes beat {
+
+      0%,
+      100% {
+        transform: scale(1)
+      }
+
+      15% {
+        transform: scale(1.2)
+      }
+
+      30% {
+        transform: scale(1)
+      }
+    }
+
+    .m-ring {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 92px
+    }
+
+    .ring {
+      position: relative;
+      width: 92px;
+      height: 92px
+    }
+
+    .ring svg {
+      width: 100%;
+      height: 100%
+    }
+
+    .ring .trk {
+      fill: none;
+      stroke: var(--teal-soft);
+      stroke-width: 9
+    }
+
+    .ring .prg {
+      fill: none;
+      stroke: var(--teal);
+      stroke-width: 9;
+      stroke-linecap: round;
+      transition: stroke-dasharray .6s
+    }
+
+    .ring.warn .prg {
+      stroke: var(--amber)
+    }
+
+    .ring.crit .prg {
+      stroke: var(--red)
+    }
+
+    .ring-val {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      text-align: center;
+      font: 600 24px var(--f-display);
+      font-variant-numeric: tabular-nums
+    }
+
+    .thermo {
+      flex: none
+    }
+
+    .thermo.ok {
+      color: var(--green)
+    }
+
+    .thermo.warn {
+      color: var(--amber)
+    }
+
+    .thermo.crit {
+      color: var(--red)
+    }
+
+    .scale {
+      position: relative;
+      width: 100%;
+      height: 8px;
+      border-radius: 9px;
+      background: linear-gradient(90deg, var(--mint), var(--amber) 55%, var(--red))
+    }
+
+    .scale i {
+      position: absolute;
+      top: -4px;
+      width: 4px;
+      height: 16px;
+      border-radius: 3px;
+      background: var(--fg);
+      transform: translateX(-2px);
+      transition: left .6s
+    }
+
+    .lung {
+      width: 44px;
+      height: 38px;
+      flex: none;
+      animation: breathe var(--breath, 1.9s) ease-in-out infinite alternate;
+      transform-origin: center
+    }
+
+    .lung path {
+      fill: var(--teal-soft);
+      stroke: var(--teal);
+      stroke-width: 2;
+      stroke-linejoin: round
+    }
+
+    @keyframes breathe {
+      from {
+        transform: scale(.88)
+      }
+
+      to {
+        transform: scale(1.08)
+      }
+    }
+
+    .breath {
+      flex: 1;
+      height: 8px;
+      border-radius: 9px;
+      background: var(--teal-soft);
+      margin-left: 10px;
+      overflow: hidden
+    }
+
+    .breath i {
+      display: block;
+      height: 100%;
+      border-radius: 9px;
+      background: var(--teal);
+      animation: fill var(--breath, 1.9s) ease-in-out infinite alternate
+    }
+
+    @keyframes fill {
+      from {
+        width: 25%
+      }
+
+      to {
+        width: 100%
+      }
+    }
+
+    .chip-unit {
+      margin-left: auto
+    }
+
+    /* charts */
+    .chart {
+      min-width: 0;
+      position: relative;
+    }
+
+    .chart svg {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      overflow: visible
+    }
+
+    .chart .grid {
+      stroke: var(--line);
+      stroke-width: 1
+    }
+
+    .chart .tick {
+      fill: var(--muted);
+      font: 11px var(--f-mono)
+    }
+
+    .chart .ln {
+      fill: none;
+      stroke: var(--teal);
+      stroke-width: 2.5;
+      stroke-linejoin: round;
+      stroke-linecap: round
+    }
+
+    .chart .ar {
+      fill: var(--teal);
+      opacity: .12
+    }
+
+    .chart .pt {
+      fill: var(--surface);
+      stroke: var(--teal);
+      stroke-width: 2;
+      cursor: pointer;
+      transition: r .15s ease, stroke-width .15s ease;
+    }
+
+    .chart .pt:hover {
+      r: 6;
+      stroke-width: 3.5;
+    }
+
+    .chart .pt.last {
+      fill: var(--teal)
+    }
+
+    .chart .base {
+      stroke: var(--muted);
+      stroke-dasharray: 4 4
+    }
+
+    .chart .fl-line {
+      stroke: var(--amber);
+      stroke-dasharray: 3 3
+    }
+
+    .chart .fl-warn {
+      fill: var(--amber)
+    }
+
+    .chart .fl-txt {
+      fill: var(--amber);
+      font: 600 11px var(--f-body)
+    }
+
+    .note {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 8px;
+      max-width: 70ch
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+      margin-top: 12px
+    }
+
+    .fact {
+      background: var(--surface-2);
+      border-radius: 12px;
+      padding: 10px 12px
+    }
+
+    .fact b {
+      display: block;
+      font: 600 18px var(--f-display);
+      font-variant-numeric: tabular-nums
+    }
+
+    .fact span {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .clin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+      gap: 12px
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: var(--surface-2);
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px
+    }
+
+    .ph {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap
+    }
+
+    canvas#ppg {
+      width: 100%;
+      height: 150px;
+      display: block
+    }
+
+    .kb {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font: 12px/1.45 var(--f-mono)
+    }
+
+    .kb li {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px
+    }
+
+    .kbt {
+      display: inline-block;
+      font: 600 10px var(--f-body);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      background: var(--teal-soft);
+      color: var(--teal);
+      border-radius: 99px;
+      padding: 2px 6px;
+      margin-right: 6px
+    }
+
+    /* medication */
+    .prog {
+      height: 6px;
+      border-radius: 9px;
+      background: var(--teal-soft);
+      overflow: hidden
+    }
+
+    .prog i {
+      display: block;
+      height: 100%;
+      background: var(--teal);
+      transition: width .3s
+    }
+
+    .period {
+      margin-top: 12px
+    }
+
+    .period h3 {
+      color: var(--muted);
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 2px
+    }
+
+    .med {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-top: 1px solid var(--line)
+    }
+
+    .med .t {
+      flex: 1;
+      min-width: 0
+    }
+
+    .med .t b {
+      display: block;
+      font-weight: 600
+    }
+
+    .med .t span {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .tag {
+      font: 600 10.5px var(--f-body);
+      padding: 3px 7px;
+      border-radius: 99px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      margin-left: 6px;
+      text-transform: uppercase;
+      letter-spacing: .04em
+    }
+
+    /* medication status and add form */
+    .add-med-form {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      margin: 12px 0 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      animation: fadeIn .2s ease-out;
+    }
+
+    .add-med-form[hidden] {
+      display: none !important;
+    }
+
+    .add-med-title {
+      font: 600 11.5px var(--f-display);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--teal);
+    }
+
+    .add-med-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .add-med-grid .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .add-med-grid .form-field label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .add-med-grid input,
+    .add-med-grid select {
+      font: 500 12px var(--f-body);
+      padding: 6px 8px;
+      min-height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+    }
+
+    .add-med-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .med-status-btn {
+      font: 600 11.5px/1 var(--f-body);
+      border-radius: 99px;
+      padding: 6px 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all .15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .med-status-btn.taken {
+      background: var(--green-soft);
+      color: var(--green);
+      border-color: color-mix(in srgb, var(--green) 30%, transparent);
+    }
+
+    .med-status-btn.taken:hover {
+      filter: brightness(0.95);
+    }
+
+    .med-status-btn.overdue {
+      background: var(--red-soft);
+      color: var(--red);
+      border-color: color-mix(in srgb, var(--red) 30%, transparent);
+    }
+
+    .med-status-btn.pending {
+      background: var(--surface-2);
+      color: var(--muted);
+      border-color: var(--line);
+    }
+
+    .med-status-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-del-med {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      opacity: 0.4;
+      transition: opacity .15s, color .15s;
+    }
+
+    .btn-del-med:hover {
+      opacity: 1;
+      color: var(--red);
+    }
+
+    /* camera */
+    .cam {
+      position: relative;
+      aspect-ratio: 16/9;
+      max-width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--cam-wall)
+    }
+
+    .cam>svg {
+      width: 100%;
+      height: 100%;
+      display: block
+    }
+
+    .cam.live>svg {
+      animation: drift 6s ease-in-out infinite alternate
+    }
+
+    .cam-feed-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #020617;
+    }
+
+    .cam-error-box {
+      position: absolute;
+      inset: 0;
+      background: #0b1320;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      text-align: center;
+      gap: 9px;
+      z-index: 4;
+    }
+
+    .rpi-badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rpi-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 10px #22c55e;
+      animation: pulseGreen 1.5s infinite;
+    }
+
+    @keyframes pulseGreen {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    @keyframes drift {
+      from {
+        transform: scale(1.02)
+      }
+
+      to {
+        transform: scale(1.07) translate(-1%, -1%)
+      }
+    }
+
+    /* Maximized / Fullscreen Camera Theater Modal */
+    .cam-theater-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 18, 17, 0.94);
+      backdrop-filter: blur(10px);
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      animation: theaterFadeIn .2s ease-out;
+    }
+
+    .cam-theater-modal.open {
+      display: flex;
+    }
+
+    @keyframes theaterFadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .cam-theater-box {
+      width: 100%;
+      max-width: 1200px;
+      height: 84vh;
+      background: #020617;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 18px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .cam-theater-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+      flex-shrink: 0;
+    }
+
+    .cam-theater-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font: 700 16px var(--f-display);
+    }
+
+    .cam-theater-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cam-theater-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font: 600 12.5px var(--f-body);
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s ease;
+    }
+
+    .cam-theater-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .cam-theater-btn.close {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .cam-theater-btn.close:hover {
+      background: rgba(239, 68, 68, 0.4);
+      color: #fff;
+    }
+
+    .cam-theater-body {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .cam-theater-body img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .cam-quick-expand {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(10, 20, 20, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #fff;
+      border-radius: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font: 600 11.5px var(--f-mono);
+      z-index: 5;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all .15s ease;
+    }
+
+    .cam-quick-expand:hover {
+      background: var(--teal);
+      border-color: var(--teal);
+      transform: scale(1.04);
+    }
+
+    .ov {
+      position: absolute;
+      font: 600 11px var(--f-mono);
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: rgba(10, 20, 20, .66);
+      color: #fff
+    }
+
+    .ov.tl {
+      top: 8px;
+      left: 8px
+    }
+
+    .ov.tr {
+      top: 8px;
+      right: 8px
+    }
+
+    .ov.bl {
+      bottom: 8px;
+      left: 8px
+    }
+
+    .shutter {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      gap: 4px;
+      text-align: center;
+      background: #16282a;
+      color: #cfe5e2;
+      padding: 12px
+    }
+
+    .shutter small {
+      opacity: .8
+    }
+
+    /* voice */
+    .tx {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scrollbar-width: thin
+    }
+
+    .line {
+      max-width: 92%;
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 13px
+    }
+
+    .line .who {
+      display: block;
+      font: 600 10.5px var(--f-body);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: 2px
+    }
+
+    .line.agent {
+      background: var(--teal-soft);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px
+    }
+
+    .line.patient {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      align-self: flex-end;
+      border-bottom-right-radius: 4px
+    }
+
+    .line.sys {
+      align-self: stretch;
+      max-width: 100%;
+      border: 1px dashed var(--line);
+      font: 11.5px var(--f-mono);
+      color: var(--muted);
+      padding: 6px 8px;
+      border-radius: 8px
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px
+    }
+
+    .vin {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px
+    }
+
+    .vin input {
+      flex: 1;
+      min-width: 0
+    }
+
+    .vstat {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--green);
+      font-weight: 600
+    }
+
+    .vstat::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor
+    }
+
+    /* incidents */
+    .inc-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .inc {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr) auto;
+      gap: 6px 14px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--surface-2)
+    }
+
+    .inc.pending {
+      background: var(--amber-soft);
+      border-color: color-mix(in srgb, var(--amber) 40%, var(--line))
+    }
+
+    .inc.critical {
+      background: var(--red-soft);
+      border-color: color-mix(in srgb, var(--red) 45%, var(--line))
+    }
+
+    .inc time {
+      font: 500 12px var(--f-mono);
+      color: var(--muted)
+    }
+
+    .inc strong {
+      display: block;
+      font-weight: 600
+    }
+
+    .inc .d {
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .inc-act {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end
+    }
+
+    .badge {
+      font: 600 11px/1 var(--f-body);
+      padding: 6px 9px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      letter-spacing: .05em
+    }
+
+    @media(max-width:700px) {
+      .inc {
+        grid-template-columns: minmax(0, 1fr) auto
+      }
+
+      .inc time {
+        grid-column: 1/-1
+      }
+    }
+
+    /* toasts */
+    #toasts {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+      pointer-events: none;
+      z-index: 20
+    }
+
+    .toast {
+      pointer-events: auto;
+      background: var(--fg);
+      color: var(--bg);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      box-shadow: var(--shadow);
+      max-width: min(520px, 100%)
+    }
+
+    /* Top-left Menu Trigger */
+    .menu-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background .15s, border-color .15s, color .15s, transform .1s;
+    }
+
+    .menu-btn:hover {
+      background: var(--surface-2);
+      border-color: var(--teal);
+      color: var(--teal);
+    }
+
+    .menu-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Swipe / Drawer Menu */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(3px);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease-out;
+    }
+
+    .drawer-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-menu {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 320px;
+      max-width: 86vw;
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+      box-shadow: 4px 0 30px rgba(0, 0, 0, 0.18);
+      z-index: 101;
+      transform: translateX(-100%);
+      transition: transform .28s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .drawer-menu.open {
+      transform: translateX(0);
+    }
+
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    .drawer-title {
+      font: 600 14px var(--f-display);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--teal);
+    }
+
+    .drawer-close {
+      background: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all .15s;
+    }
+
+    .drawer-close:hover {
+      color: var(--fg);
+      border-color: var(--fg);
+    }
+
+    .drawer-patient-card {
+      margin: 14px 16px 8px;
+      padding: 12px 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .drawer-patient-card h3 {
+      margin: 0;
+      font: 600 13.5px var(--f-display);
+    }
+
+    .drawer-patient-card p {
+      margin: 2px 0 0;
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+
+    .drawer-nav {
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .drawer-section-label {
+      font: 600 11px var(--f-body);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      padding: 8px 6px 4px;
+    }
+
+    .drawer-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 12px;
+      border-radius: 10px;
+      background: none;
+      border: 1px solid transparent;
+      color: var(--fg);
+      text-align: left;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, transform .1s;
+      width: 100%;
+    }
+
+    .drawer-item:hover {
+      background: var(--surface-2);
+      border-color: var(--line);
+    }
+
+    .drawer-item:active {
+      transform: scale(0.98);
+    }
+
+    .drawer-item-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: var(--teal-soft);
+      color: var(--teal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .drawer-item-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .drawer-item-title {
+      font-weight: 600;
+      font-size: 13px;
+      display: block;
+      color: var(--fg);
+    }
+
+    .drawer-item-sub {
+      font-size: 11.5px;
+      color: var(--muted);
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .drawer-arrow {
+      color: var(--muted);
+      opacity: 0.6;
+      flex-shrink: 0;
+    }
+
+    /* Upload & Document Auto-Fill */
+    .drawer-item-highlight {
+      background: color-mix(in srgb, var(--teal) 12%, var(--surface-2));
+      border: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--teal) 15%, transparent);
+      margin-bottom: 8px;
+    }
+
+    .drawer-item-highlight:hover {
+      background: color-mix(in srgb, var(--teal) 22%, var(--surface-2));
+      border-color: var(--teal);
+    }
+
+    .upload-icon {
+      background: var(--teal) !important;
+      color: #fff !important;
+    }
+
+    .doc-dropzone {
+      border: 2px dashed var(--line);
+      border-radius: 14px;
+      padding: 24px 16px;
+      text-align: center;
+      background: var(--surface-2);
+      cursor: pointer;
+      transition: all .25s ease;
+      position: relative;
+    }
+
+    .doc-dropzone:hover,
+    .doc-dropzone.is-dragover {
+      border-color: var(--teal);
+      background: color-mix(in srgb, var(--teal) 8%, var(--surface-2));
+    }
+
+    .doc-dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .doc-formats-pills {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .doc-format-pill {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+
+    .upload-samples-row {
+      margin-top: 14px;
+      border-top: 1px dashed var(--line);
+      padding-top: 12px;
+    }
+
+    .sample-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 9px 12px;
+      margin-top: 6px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--fg);
+      font-size: 12px;
+      cursor: pointer;
+      text-align: left;
+      transition: all .15s ease;
+    }
+
+    .sample-btn:hover {
+      border-color: var(--teal);
+      background: var(--teal-soft);
+      color: var(--teal);
+    }
+
+    .upload-progress-box {
+      margin-top: 14px;
+      padding: 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .upload-progress-bar {
+      height: 6px;
+      border-radius: 6px;
+      background: var(--line);
+      overflow: hidden;
+      margin: 8px 0;
+    }
+
+    .upload-progress-bar i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: var(--teal);
+      transition: width .3s ease;
+    }
+
+    .extracted-section-card {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 10px;
+    }
+
+    .extracted-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-weight: 600;
+      font-size: 12.5px;
+      color: var(--fg);
+    }
+
+    /* Modal Dialog */
+    .info-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.52);
+      backdrop-filter: blur(4px);
+      z-index: 120;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease-out;
+    }
+
+    .info-modal-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .info-modal {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 580px;
+      max-height: 86vh;
+      display: flex;
+      flex-direction: column;
+      transform: scale(0.96) translateY(8px);
+      transition: transform .2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .info-modal-backdrop.show .info-modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .info-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .info-modal-head h2 {
+      margin: 0;
+      font: 600 17px var(--f-display);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--fg);
+    }
+
+    .info-modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .info-modal-foot {
+      padding: 12px 20px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      background: var(--surface-2);
+      border-radius: 0 0 16px 16px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .info-cell {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .info-cell .lbl {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 3px;
+      display: block;
+    }
+
+    .info-cell .val {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--fg);
+    }
+
+    .info-list-card {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+
+    .info-list-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .info-list-title {
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+
+    .box-edit-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s ease;
+      flex-shrink: 0;
+      padding: 0;
+    }
+
+    .box-edit-btn:hover {
+      color: var(--teal);
+      border-color: var(--teal);
+      background: var(--teal-soft);
+      transform: scale(1.05);
+    }
+
+    .box-edit-btn.active {
+      background: var(--green);
+      color: #fff;
+      border-color: var(--green);
+    }
+
+    .is-editing {
+      border-color: var(--teal) !important;
+      box-shadow: 0 0 0 2px var(--teal-soft) !important;
+    }
+
+    .editable-content {
+      border-radius: 6px;
+      transition: background .15s;
+    }
+
+    .editable-content[contenteditable="true"] {
+      outline: none;
+      background: color-mix(in srgb, var(--surface) 70%, transparent);
+      padding: 4px;
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+
+    /* Appointment Calendar & Time Picker Box */
+    .appt-picker-box {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+
+    .appt-picker-title {
+      font: 600 12px var(--f-display);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--teal);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .appt-picker-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .appt-picker-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .appt-picker-field label {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .appt-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .appt-input-wrap input,
+    .appt-input-wrap select {
+      font: 500 13px var(--f-body);
+      color: var(--fg);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px 8px 34px;
+      width: 100%;
+      min-height: 38px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .appt-input-wrap .field-icon {
+      position: absolute;
+      left: 10px;
+      width: 16px;
+      height: 16px;
+      color: var(--muted);
+      pointer-events: none;
+      flex-shrink: 0;
+    }
+
+    .appt-input-wrap input:focus,
+    .appt-input-wrap select:focus {
+      outline: none;
+      border-color: var(--teal);
+      box-shadow: 0 0 0 2px var(--teal-soft);
+    }
+
+    .appt-picker-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    @media(prefers-reduced-motion:reduce) {
+      * {
+        animation: none !important;
+        transition: none !important
+      }
+    }
+  </style>
+
+  <!-- Swipe / Drawer Menu -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="drawer-menu" id="drawerMenu" aria-label="Clinical Navigation" aria-hidden="true">
+    <div class="drawer-head">
+      <div class="drawer-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2v20M2 12h20" />
+        </svg>
+        Clinical Portal
+      </div>
+      <button class="drawer-close" id="drawerCloseBtn" type="button" aria-label="Close navigation menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="drawer-patient-card">
+      <div class="avatar" id="drawerPatientAvatar" aria-hidden="true" style="width:38px;height:38px;font-size:13px">MI</div>
+      <div style="flex:1;min-width:0">
+        <h3 id="drawerPatientName">Margaret Iyer</h3>
+        <p id="drawerPatientSub">78 yrs · Patient ID P-1042</p>
+      </div>
+      <button class="box-edit-btn" id="drawerEditPatientBtn" type="button" title="Edit Patient Information"
+        aria-label="Edit Patient Information">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="drawer-nav">
+      <span class="drawer-section-label">Smart Intake & Records</span>
+
+      <button class="drawer-item drawer-item-highlight" id="btnUploadDoc" type="button">
+        <div class="drawer-item-icon upload-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </div>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title" style="display:flex;align-items:center;gap:6px">
+            Upload Information
+            <span class="badge" style="background:var(--teal);color:#fff;font-size:9px;padding:2px 5px">Auto-Fill</span>
+          </span>
+          <span class="drawer-item-sub">Upload PDF, Word doc, or photo to auto-fill</span>
+        </div>
+        <svg class="drawer-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+
+      <span class="drawer-section-label" style="margin-top:6px">Clinical Records</span>
+
+      <button class="drawer-item" id="btnPatientInfo" type="button">
+        <div class="drawer-item-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title">Patient Information</span>
+          <span class="drawer-item-sub">Demographics, vitals baseline & diagnoses</span>
+        </div>
+        <svg class="drawer-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+
+      <button class="drawer-item" id="btnMedHistory" type="button">
+        <div class="drawer-item-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7Z" />
+            <path d="m8.5 8.5 7 7" />
+          </svg>
+        </div>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title">Medication History</span>
+          <span class="drawer-item-sub">Active prescriptions, adherence & logs</span>
+        </div>
+        <svg class="drawer-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+
+      <button class="drawer-item" id="btnNextAppt" type="button">
+        <div class="drawer-item-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </div>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title">Next Appointment</span>
+          <span class="drawer-item-sub" id="apptDrawerSub">Nov 18, 2026 · 10:30 AM with Dr. Sarah Jenkins, MD</span>
+        </div>
+        <svg class="drawer-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+
+      <button class="drawer-item" id="btnGuardianInfo" type="button">
+        <div class="drawer-item-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </div>
+        <div class="drawer-item-text">
+          <span class="drawer-item-title">Guardian Information</span>
+          <span class="drawer-item-sub">Caregiver & Emergency Contacts</span>
+        </div>
+        <svg class="drawer-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Detail Information Modal -->
+  <div class="info-modal-backdrop" id="infoModalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="info-modal" id="infoModal">
+      <div class="info-modal-head">
+        <h2 id="infoModalTitle">Details</h2>
+        <button class="drawer-close" id="infoModalCloseBtn" type="button" aria-label="Close dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="info-modal-body" id="infoModalBody"></div>
+      <div class="info-modal-foot">
+        <button class="btn sm primary" id="infoModalDoneBtn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Maximized / Fullscreen Camera Theater Modal -->
+  <div class="cam-theater-modal" id="camTheaterModal" role="dialog" aria-modal="true" aria-label="Maximized Camera Stream">
+    <div class="cam-theater-box" id="camTheaterBox">
+      <div class="cam-theater-head">
+        <div class="cam-theater-title">
+          <span class="rpi-pulse-dot"></span>
+          <span>Baymax Camera · Maximized Live View</span>
+          <span style="font-size:12px;font-family:var(--f-mono);color:#94a3b8;font-weight:400" id="theaterPiLabel">RPi: 192.168.31.231:5000</span>
+        </div>
+        <div class="cam-theater-actions">
+          <button type="button" class="cam-theater-btn" id="btnTheaterFullscreen" title="Toggle native browser fullscreen">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+            Fullscreen
+          </button>
+          <button type="button" class="cam-theater-btn close" id="btnCloseTheater" title="Minimize back to dashboard (Esc)">
+            ✕ Minimize
+          </button>
+        </div>
+      </div>
+      <div class="cam-theater-body" id="camTheaterBody"></div>
+    </div>
+  </div>
+
+  <header class="top">
+    <div class="wrap top-in">
+      <div class="who">
+        <button class="menu-btn" id="menuBtn" type="button" aria-label="Open clinical navigation menu" title="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="avatar" id="mainPatientAvatar" aria-hidden="true">MI</div>
+        <div>
+          <h1 id="mainPatientName">Margaret Iyer</h1>
+          <p id="mainPatientSub">78 · ID P-1042 · Sample data</p>
+        </div>
+      </div>
+      <div class="conn" id="conn" data-s="online" role="status"><span class="dot"></span><span id="connText">Online ·
+          Companion connected</span></div>
+      <div class="profile">
+        <span class="role-badge doctor-badge" aria-label="Current role: Doctor Dashboard">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2v20M2 12h20" />
+          </svg>
+          Doctor Dashboard
+        </span>
+        <div class="avatar sm" id="userAv" aria-hidden="true">SJ</div>
+        <div class="doc-info" id="docInfo" style="text-align:right;min-width:180px">
+          <span class="uname" id="uname">Dr. Sarah Jenkins, MD</span>
+          <div class="muted" id="docDetails" style="font-size:11px;line-height:1.3"></div>
+        </div>
+        <button class="btn sm" id="logoutBtn" type="button">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap main">
+    <section id="alert" class="alert" hidden role="alert"></section>
+
+
+
+    <div class="layout">
+      <div class="col">
+        <div id="stale" class="stale-note" hidden>Showing the last readings before the gateway lost internet. The
+          wristband and gateway keep recording locally and will sync when the connection returns.</div>
+        <section class="metrics" id="metrics" aria-label="Live vitals">
+          <article class="card metric">
+            <div class="m-head"><span class="m-label">Heart rate</span><span class="pill ok" id="hrPill">Normal</span>
+            </div>
+            <div class="m-val"><svg class="heart" id="hrHeart" viewBox="0 0 24 24" fill="currentColor"
+                aria-hidden="true">
+                <path
+                  d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.6 4.5 6.3 4.5c2.1 0 3.8 1.2 5.7 3.3 1.9-2.1 3.6-3.3 5.7-3.3 3.7 0 5.4 3.9 3.9 7.3C19.5 16.4 12 21 12 21z" />
+              </svg><span class="num" id="hrVal">74</span><span class="unit">bpm</span></div>
+            <div class="spark" id="hrSpark" aria-hidden="true"><svg viewBox="0 0 120 40" preserveAspectRatio="none">
+                <path class="area" id="hrArea" />
+                <path class="line" id="hrLine" />
+              </svg><i class="dot-end" id="hrDot"></i></div>
+            <p class="m-sub" id="hrSub"></p>
+          </article>
+          <article class="card metric">
+            <div class="m-head"><span class="m-label">SpO2 (Pulse Ox)</span><span class="pill ok"
+                id="spoPill">Normal</span></div>
+            <div class="m-val"><svg class="spo-icon" id="spoIcon" viewBox="0 0 24 24" fill="currentColor"
+                aria-hidden="true">
+                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+              </svg><span class="num" id="spoVal">98</span><span class="unit">%</span></div>
+            <div class="spark" id="spoSpark" aria-hidden="true"><svg viewBox="0 0 120 40" preserveAspectRatio="none">
+                <path class="area" id="spoArea" />
+                <path class="line" id="spoLine" />
+              </svg><i class="dot-end" id="spoDot"></i></div>
+            <p class="m-sub" id="spoSub"></p>
+          </article>
+          <article class="card metric">
+            <div class="m-head"><span class="m-label">Temperature</span><span class="pill warn" id="tPill">Slightly
+                warm</span></div>
+            <div class="m-val"><svg class="thermo warn" id="thermo" viewBox="0 0 24 24" width="24" height="24"
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M14 14.76V5a2 2 0 0 0-4 0v9.76a4 4 0 1 0 4 0z" />
+              </svg><span class="num" id="tVal">99.2</span><span class="unit" id="tUnit">°F</span><button
+                class="btn sm chip-unit" id="unitBtn" type="button"
+                aria-label="Switch between Fahrenheit and Celsius">°F / °C</button></div>
+            <div class="m-slot">
+              <div class="scale" aria-hidden="true"><i id="tMark"></i></div>
+            </div>
+            <p class="m-sub" id="tSub"></p>
+          </article>
+          <article class="card metric">
+            <div class="m-head"><span class="m-label">Respiration</span><span class="pill ok" id="rrPill">Normal</span>
+            </div>
+            <div class="m-val"><span class="num" id="rrVal">16</span><span class="unit">br/min</span></div>
+            <div class="m-slot" aria-hidden="true"><svg class="lung" viewBox="0 0 48 40">
+                <path d="M22 6v14c0 9-4 14-11 14C6 34 4 30 5 24l3-12c1-4 4-6 8-6h6z" />
+                <path d="M26 6v14c0 9 4 14 11 14 5 0 7-4 6-10l-3-12c-1-4-4-6-8-6h-6z" />
+              </svg>
+              <div class="breath"><i></i></div>
+            </div>
+            <p class="m-sub" id="rrSub"></p>
+          </article>
+        </section>
+
+        <section class="card" aria-labelledby="actH">
+          <div class="card-head">
+            <h2 id="actH">Weekly activity and movement trend</h2>
+            <div class="seg" role="group" aria-label="Range"><button type="button" data-act-mode="week"
+                aria-pressed="true">Week</button><button type="button" data-act-mode="day"
+                aria-pressed="false">Today</button></div>
+          </div>
+          <div class="chart" id="actChart"></div>
+          <p class="note" id="actNote"></p>
+          <div class="facts">
+            <div class="fact"><b>3,420</b><span>Steps today (goal 5,000)</span></div>
+            <div class="fact"><b>46 min</b><span>Active movement</span></div>
+            <div class="fact"><b>Seated 62%</b><span>Posture since 6 AM</span></div>
+            <div class="fact"><b>10:42 AM</b><span>Last fall, resolved</span></div>
+          </div>
+        </section>
+
+        <section class="card" id="clin" aria-labelledby="clinH">
+          <div class="card-head">
+            <h2 id="clinH">Clinician detail</h2><span class="muted">Simulated high-resolution streams</span>
+          </div>
+          <div class="clin-grid">
+            <div class="panel">
+              <div class="ph">
+                <h3>Photoplethysmogram</h3>
+                <div class="seg" role="group" aria-label="Signal"><button type="button" data-ppg="raw"
+                    aria-pressed="true">Raw</button><button type="button" data-ppg="filt"
+                    aria-pressed="false">Filtered</button></div>
+              </div>
+              <canvas id="ppg" aria-label="Live PPG waveform"></canvas>
+            </div>
+            <div class="panel">
+              <h3>Pulse transit variation (ms)</h3>
+              <div class="chart" id="pttChart"></div>
+            </div>
+            <div class="panel">
+              <h3>Hourly temperature shift</h3>
+              <div class="chart" id="tempChart"></div>
+            </div>
+            <div class="panel">
+              <div class="ph">
+                <h3>Companion knowledge base</h3><button class="btn sm" id="kbPush" type="button">Push summary
+                  now</button>
+              </div>
+              <p class="note" style="margin:0" id="kbNext"></p>
+              <ul class="kb" id="kbList"></ul>
+              <p class="note" style="margin:0" id="kbMeta"></p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="col" aria-label="Care actions">
+        <section class="card" aria-labelledby="medH">
+          <div class="card-head" style="align-items:flex-start">
+            <div>
+              <h2 id="medH">Medication schedule</h2>
+              <span class="muted" id="medCount" style="font-size:12px"></span>
+            </div>
+            <button class="btn sm primary" id="openAddMedBtn" type="button"
+              style="display:inline-flex;align-items:center;gap:4px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Medicine
+            </button>
+          </div>
+          <div class="prog" aria-hidden="true" style="margin-top:8px"><i id="medBar"></i></div>
+
+          <form id="addMedForm" class="add-med-form" hidden>
+            <div class="add-med-title">Prescribe / Add Schedule</div>
+            <div class="add-med-grid">
+              <div class="form-field">
+                <label for="newMedName">Medicine Name</label>
+                <input type="text" id="newMedName" placeholder="e.g. Lisinopril" required autocomplete="off">
+              </div>
+              <div class="form-field">
+                <label for="newMedDose">Dosage</label>
+                <input type="text" id="newMedDose" placeholder="e.g. 10 mg" required autocomplete="off">
+              </div>
+              <div class="form-field">
+                <label for="newMedPeriod">Schedule Period</label>
+                <select id="newMedPeriod" required>
+                  <option value="Morning">Morning</option>
+                  <option value="Afternoon">Afternoon</option>
+                  <option value="Evening">Evening</option>
+                  <option value="Night">Night</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="newMedTime">Time</label>
+                <input type="time" id="newMedTime" value="08:00" required>
+              </div>
+            </div>
+            <div class="add-med-actions">
+              <button type="button" class="btn sm" id="cancelAddMedBtn">Cancel</button>
+              <button type="submit" class="btn sm primary">Save Schedule</button>
+            </div>
+          </form>
+
+          <div id="medList"></div>
+        </section>
+
+        <section class="card" aria-labelledby="camH">
+          <div class="card-head">
+            <h2 id="camH">Baymax Camera</h2>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button type="button" class="btn sm" id="btnPiSettings" style="padding:3px 9px;font-size:11.5px;font-family:var(--f-mono);background:var(--surface-2);border:1px solid var(--line);cursor:pointer;color:var(--teal);border-radius:6px;display:inline-flex;align-items:center;gap:5px" title="Configure Raspberry Pi IP Address">
+                <span>RPi: <strong id="piIpLabel">192.168.31.231</strong></span>
+                <span>⚙️</span>
+              </button>
+            </div>
+          </div>
+          <div class="cam" id="camView"></div>
+          <div class="btn-row">
+            <button class="btn primary" id="btnLive" type="button">Request live view</button>
+            <button class="btn" id="btnMaximizeCam" type="button" title="Expand live camera view to large theater screen">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+              </svg>
+              Maximize Screen
+            </button>
+            <button class="btn" id="btnCheck" type="button">Ask companion to check in</button>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="voiceH">
+          <div class="card-head">
+            <h2 id="voiceH">Voice companion</h2><span class="vstat">Ready</span>
+          </div>
+          <ul class="tx" id="tx" role="log" aria-live="polite"></ul>
+          <div class="chips" id="chips">
+            <button class="chip" type="button">I feel dizzy</button>
+            <button class="chip" type="button">How is my temperature?</button>
+            <button class="chip" type="button">Did I take my medicines?</button>
+            <button class="chip" type="button">I'm fine</button>
+          </div>
+          <form class="vin" id="vform">
+            <label class="sr" for="vtext">What the patient says</label>
+            <input type="text" id="vtext" placeholder="Type what Margaret says" autocomplete="off">
+            <button class="btn primary" type="submit">Send</button>
+          </form>
+          <p class="note">Prototype replies are scripted from live readings. Production mounts the ElevenLabs
+            conversation widget here.</p>
+        </section>
+      </aside>
+    </div>
+
+    <section class="card" style="margin-top:16px" aria-labelledby="incH">
+      <div class="card-head">
+        <h2 id="incH">Incidents and alerts</h2><span class="muted" id="incCount"></span>
+      </div>
+      <ul class="inc-list" id="incList"></ul>
+    </section>
+  </main>
+  <div id="toasts" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+      const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&', '<': '<', '>': '>', '"': '"' }[c]));
+      const fmtTime = d => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const fmtDay = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const stamp = d => fmtDay(d) + ' · ' + fmtTime(d);
+      const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+      const mean = a => a.reduce((x, y) => x + y, 0) / (a.length || 1);
+      const root = document.documentElement;
+
+      const ROLES = {
+        guardian: { label: 'Guardian', user: 'Sunita Nair', init: 'SN', resolve: true, clin: false },
+        doctor: { label: 'Doctor', user: 'Dr. Sarah Jenkins, MD', init: 'SJ', resolve: true, clin: true }
+      };
+      const S = {
+        role: 'doctor', unit: 'F', t: 0, hr: 74, spo2: 97.6, temp: 99.2, rr: 16, boost: 0, state: 'normal', deadline: 0, fallAt: null, fallInc: null,
+        offline: false, flush: false, buffer: 0, pendingPush: null, win: [],
+        hist: Array.from({ length: 60 }, (_, i) => +(73.5 + Math.sin(i / 60 * Math.PI * 4) * 2.2 + Math.cos(i / 60 * Math.PI * 7) * 1.4 + (Math.random() - .5) * 1.2).toFixed(1)),
+        spo2Hist: Array.from({ length: 60 }, (_, i) => +(97.6 + Math.sin(i / 60 * Math.PI * 3) * 0.45 + (Math.random() - .5) * 0.3).toFixed(1)),
+        cam: 'snap', shutter: false,
+        actMode: 'week', ppgMode: 'raw', lastSched: -1, lastThr: 0, ph: 0
+      };
+
+      /* sample data */
+      const INC = [
+        { id: 2, t: new Date(2026, 10, 9, 14, 20), title: 'Afternoon dose overdue', detail: 'Calcium 500 mg is not yet marked as taken.', status: 'pending' },
+        { id: 1, t: new Date(2026, 10, 9, 10, 42), title: 'Fall detected - verified safe after check-in', detail: 'Wristband button pressed 11 s after the companion asked "Are you alright?"', status: 'resolved' },
+        { id: 3, t: new Date(2026, 10, 9, 3, 12), title: 'SpO2 dipped to 92% for 3 min', detail: 'Recovered to 96% without intervention.', status: 'resolved' },
+        { id: 4, t: new Date(2026, 10, 8, 21, 5), title: 'Evening dose taken late', detail: 'Atorvastatin 20 mg logged 52 min after schedule.', status: 'resolved' }
+      ];
+      let MEDS = [
+        { id: 'met', p: 'Morning', name: 'Metformin', dose: '500 mg', time: '8:00 AM', h: 8, done: true },
+        { id: 'aml', p: 'Morning', name: 'Amlodipine', dose: '5 mg', time: '8:00 AM', h: 8, done: true },
+        { id: 'vit', p: 'Afternoon', name: 'Vitamin D', dose: '1000 IU', time: '1:00 PM', h: 13, done: true },
+        { id: 'calc', p: 'Afternoon', name: 'Calcium', dose: '500 mg', time: '2:00 PM', h: 14, done: false },
+        { id: 'ato', p: 'Evening', name: 'Atorvastatin', dose: '20 mg', time: '7:00 PM', h: 19, done: false },
+        { id: 'mel', p: 'Night', name: 'Melatonin', dose: '3 mg', time: '9:30 PM', h: 21.5, done: false }
+      ];
+      const KB = [
+        { trigger: 'scheduled', text: 'Nov 9 · 2:00 PM - HR avg: 74 bpm, SpO2: 98%, Temp: 99.0°F, Fall event at 10:42 AM resolved' },
+        { trigger: 'scheduled', text: 'Nov 9 · 1:30 PM - HR avg: 73 bpm, SpO2: 98%, Temp: 98.9°F, Meds 3/6 taken' },
+        { trigger: 'scheduled', text: 'Nov 9 · 1:00 PM - HR avg: 72 bpm, SpO2: 97%, Temp: 98.7°F, Meds 3/6 taken' }
+      ];
+      const TX = [
+        { who: 'agent', text: 'Good afternoon, Margaret. How are you feeling after lunch?' },
+        { who: 'patient', text: 'A little tired, but fine.' },
+        { who: 'agent', text: 'That is understandable. Remember to drink water through the afternoon.' }
+      ];
+      const WK = { labels: ['Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon'], values: [82, 80, 79, 74, 69, 64, 61] };
+      const DAY = { labels: ['6a', '7a', '8a', '9a', '10a', '11a', '12p', '1p', '2p', '3p'], values: [12, 38, 55, 62, 44, 30, 36, 58, 41, 34] };
+      const TEMPH = [97.9, 98.1, 98.3, 98.4, 98.6, 98.7, 98.9, 99.0, 99.1, 99.2];
+      const PTT = Array.from({ length: 12 }, () => 212 + (Math.random() - .5) * 14);
+      const PPG_N = 250, PPG = [];
+      for (let i = 0; i < PPG_N; i++) {
+        const ph = (i * 74 / 60 / 25) % 1, tt = (i * 74 / 60 / 25) * 60 / 74;
+        const sig = Math.exp(-Math.pow((ph - .18) / .07, 2)) + .4 * Math.exp(-Math.pow((ph - .5) / .1, 2));
+        PPG.push({ raw: sig + .35 * Math.sin(tt * .9) + (Math.random() - .5) * .25, filt: sig + (Math.random() - .5) * .02 });
+      }
+      S.ph = PPG_N * 74 / 60 / 25;
+      const LBL = { resolved: 'Resolved', pending: 'Pending', critical: 'Critical' };
+      const snapTime = 'Last snapshot ' + fmtTime(new Date(Date.now() - 9 * 60000));
+      for (let i = 0; i < 300; i++)S.win.push({ hr: 74 + (Math.random() - .5) * 4, spo2: 97.6 + (Math.random() - .5), temp: 99.1 + (Math.random() - .5) * .1, rr: 16 + (Math.random() - .5) * 1.5 });
+      { const n = new Date(); S.lastSched = n.getHours() * 60 + n.getMinutes() }
+
+      /* helpers */
+      const C = f => (f - 32) * 5 / 9;
+      const tempStr = f => S.unit === 'F' ? f.toFixed(1) + '°F' : C(f).toFixed(1) + '°C';
+      function toast(m) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; const c = $('#toasts'); c.appendChild(d); while (c.children.length > 3) c.firstChild.remove(); setTimeout(() => d.remove(), 4600) }
+      function level(k, v) {
+        if (k === 'hr') return v > 120 || v < 45 ? 'crit' : (v > 100 || v < 50 ? 'warn' : 'ok');
+        if (k === 'spo2') return v < 90 ? 'crit' : (v < 94 ? 'warn' : 'ok');
+        if (k === 'temp') return v >= 100.4 ? 'crit' : (v >= 99.1 ? 'warn' : 'ok');
+        return v > 24 || v < 8 ? 'crit' : (v > 20 || v < 12 ? 'warn' : 'ok');
+      }
+      const PILL = { hr: { ok: 'Normal', warn: 'Elevated', crit: 'Check now' }, spo2: { ok: 'Normal', warn: 'Low', crit: 'Check now' }, temp: { ok: 'Normal', warn: 'Slightly warm', crit: 'Fever range' }, rr: { ok: 'Normal', warn: 'Fast', crit: 'Check now' } };
+      const FAM = {
+        hr: { ok: 'Resting calmly.', warn: 'A little higher than usual.', crit: 'Much higher than usual. Please check in.' },
+        spo2: { ok: 'Breathing well.', warn: 'A little low. Keep an eye on her.', crit: 'Low. Check on her now.' },
+        temp: { ok: 'Comfortable.', warn: 'Slightly warm. Encourage her to drink water.', crit: 'In the fever range. Call the clinic.' },
+        rr: { ok: 'Breathing easily.', warn: 'Breathing a little fast.', crit: 'Breathing very fast. Check on her.' }
+      };
+      const lastN = (k, n) => S.win.slice(-n).map(s => s[k]);
+
+      /* vitals */
+      function setPill(id, k, l) { const e = $(id); if (e) { e.className = 'pill ' + l; e.textContent = PILL[k][l]; } }
+      function renderVitals() {
+        const clin = ROLES[S.role].clin;
+        const lh = level('hr', S.hr), ls = level('spo2', S.spo2), lt = level('temp', S.temp), lr = level('rr', S.rr);
+        $('#hrVal').textContent = Math.round(S.hr); setPill('#hrPill', 'hr', lh);
+        if ($('#hrHeart')) $('#hrHeart').setAttribute('class', 'heart ' + lh);
+
+        $('#spoVal').textContent = Math.round(S.spo2); setPill('#spoPill', 'spo2', ls);
+        if ($('#spoIcon')) $('#spoIcon').setAttribute('class', 'spo-icon ' + ls);
+        if ($('#spoArc')) $('#spoArc').setAttribute('stroke-dasharray', (S.spo2 / 100 * 263.9).toFixed(1) + ' 264');
+        if ($('#spoRing')) $('#spoRing').className = 'ring ' + ls;
+
+        $('#tVal').textContent = S.unit === 'F' ? S.temp.toFixed(1) : C(S.temp).toFixed(1); $('#tUnit').textContent = S.unit === 'F' ? '°F' : '°C';
+        setPill('#tPill', 'temp', lt); $('#thermo').setAttribute('class', 'thermo ' + lt);
+        $('#tMark').style.left = clamp((S.temp - 96) / 7 * 100, 0, 100) + '%';
+        $('#rrVal').textContent = Math.round(S.rr); setPill('#rrPill', 'rr', lr);
+        root.style.setProperty('--beat', (60 / S.hr).toFixed(2) + 's');
+        root.style.setProperty('--breath', (30 / S.rr).toFixed(2) + 's');
+        if (clin) {
+          const d = S.temp - 98.4, dd = S.unit === 'F' ? d : d * 5 / 9;
+          const hrWin = lastN('hr', 300), spoWin = lastN('spo2', 300), rrWin = lastN('rr', 300);
+          $('#hrSub').textContent = `Baseline 72 bpm · 5 min avg ${mean(hrWin).toFixed(0)}`;
+          $('#spoSub').textContent = `Baseline 97% · 5 min low ${(spoWin.length ? Math.min(...spoWin) : 97).toFixed(0)}%`;
+          $('#tSub').textContent = `Morning ${tempStr(98.4)} · change ${dd >= 0 ? '+' : ''}${dd.toFixed(1)}°`;
+          $('#rrSub').textContent = `Baseline 16/min · 5 min avg ${mean(rrWin).toFixed(0)}`;
+        } else {
+          $('#hrSub').textContent = FAM.hr[lh]; $('#spoSub').textContent = FAM.spo2[ls]; $('#tSub').textContent = FAM.temp[lt]; $('#rrSub').textContent = FAM.rr[lr];
+        }
+
+        // Heart rate sparkline
+        if ($('#hrLine') && S.hist) {
+          const n = S.hist.length, pts = S.hist.map((v, i) => [i / (n - 1) * 120, 38 - clamp((v - 50) / 80, 0, 1) * 34]);
+          const p = pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join('L');
+          $('#hrLine').setAttribute('d', 'M' + p); $('#hrArea').setAttribute('d', 'M0,40L' + p + 'L120,40Z');
+          $('#hrDot').style.top = (pts[n - 1][1] / 40 * 100) + '%';
+          if ($('#hrSpark')) $('#hrSpark').className = 'spark ' + lh;
+        }
+
+        // SpO2 sparkline
+        if ($('#spoLine') && S.spo2Hist) {
+          const n = S.spo2Hist.length, pts = S.spo2Hist.map((v, i) => [i / (n - 1) * 120, 38 - clamp((v - 90) / 10, 0, 1) * 34]);
+          const p = pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join('L');
+          $('#spoLine').setAttribute('d', 'M' + p); $('#spoArea').setAttribute('d', 'M0,40L' + p + 'L120,40Z');
+          $('#spoDot').style.top = (pts[n - 1][1] / 40 * 100) + '%';
+          if ($('#spoSpark')) $('#spoSpark').className = 'spark ' + ls;
+        }
+      }
+
+      /* charts */
+      function lineChart(el, o) {
+        if (!el) return;
+        const w = Math.max(el.clientWidth || 320, 240), h = o.h || 200, pl = o.pl || 38, pr = 14, pt = o.pt || 30, pb = 26, iw = w - pl - pr, ih = h - pt - pb, n = (o.values || []).length;
+        if (!n) { el.innerHTML = ''; return; }
+        const span = (o.max - o.min) || 1;
+        const X = i => pl + (n === 1 ? iw / 2 : i * iw / (n - 1)), Y = v => pt + ih - (v - o.min) / span * ih, fmt = o.fmt || String;
+        let s = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="max-width:100%;display:block" role="img" aria-label="${esc(o.label)}">`;
+        const tk = o.ticks || 4;
+        for (let k = 0; k <= tk; k++) { const v = o.min + (o.max - o.min) * k / tk; s += `<line class="grid" x1="${pl}" x2="${w - pr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text class="tick" x="${pl - 6}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end">${fmt(v)}</text>` }
+        const step = Math.max(1, Math.ceil(n * (o.lw || 34) / iw));
+        (o.labels || []).forEach((l, i) => { if ((n - 1 - i) % step === 0) s += `<text class="tick" x="${X(i).toFixed(1)}" y="${h - 6}" text-anchor="middle">${l}</text>` });
+        if (o.base) s += `<line class="base" x1="${pl}" x2="${w - pr}" y1="${Y(o.base.v).toFixed(1)}" y2="${Y(o.base.v).toFixed(1)}"/><text class="tick" x="${w - pr}" y="${(Y(o.base.v) - 5).toFixed(1)}" text-anchor="end">${o.base.label}</text>`;
+        const pts = o.values.map((v, i) => X(i).toFixed(1) + ',' + Y(clamp(v, o.min, o.max)).toFixed(1));
+        s += `<path class="ar" d="M${X(0).toFixed(1)},${Y(o.min).toFixed(1)}L${pts.join('L')}L${X(n - 1).toFixed(1)},${Y(o.min).toFixed(1)}Z"/><path class="ln" d="M${pts.join('L')}"/>`;
+        (o.flags || []).forEach(f => {
+          const x = X(f.i), end = x > w * .55, dir = end ? -1 : 1;
+          s += `<line class="fl-line" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${pt - 8}" y2="${pt + ih}"/><polygon class="fl-warn" points="${x.toFixed(1)},${pt - 20} ${(x + dir * 9).toFixed(1)},${pt - 15} ${x.toFixed(1)},${pt - 10}"/><text class="fl-txt" x="${(x + dir * 14).toFixed(1)}" y="${pt - 11}" text-anchor="${end ? 'end' : 'start'}">${esc(f.text)}</text>`
+        });
+        o.values.forEach((v, i) => {
+          const last = i === n - 1;
+          const tip = (o.labels && o.labels[i] ? o.labels[i] + ': ' : '') + fmt(v);
+          if (n <= 12 || last) s += `<circle class="pt${last ? ' last' : ''}" cx="${X(i).toFixed(1)}" cy="${Y(clamp(v, o.min, o.max)).toFixed(1)}" r="${last ? 5 : 3.5}"><title>${esc(tip)}</title></circle>`;
+        });
+        el.innerHTML = s + '</svg>';
+      }
+      function drawActivity() {
+        const wk = S.actMode === 'week';
+        lineChart($('#actChart'), { label: wk ? 'Daily mobility score for the past week' : 'Hourly movement score today', labels: wk ? WK.labels : DAY.labels, values: wk ? WK.values : DAY.values, min: 0, max: 100, ticks: 4, h: 230, base: wk ? { v: 75, label: 'Usual 75' } : null, flags: wk ? [{ i: 5, text: 'Gradual decline alert' }] : [] });
+        $('#actNote').textContent = wk ? 'Alert raised Sunday: three days in a row below Margaret\'s usual score of 75, down 21 points since Tuesday.' : 'Hourly movement score from the wristband IMU. Quiet stretches match meals and rest.';
+      }
+      function drawPtt() {
+        lineChart($('#pttChart'), { label: 'Pulse transit variation', labels: PTT.map((_, i) => i === PTT.length - 1 ? 'now' : '-' + (PTT.length - 1 - i) * 5 + 's'), values: PTT, min: 190, max: 240, ticks: 5, h: 170, pt: 16, lw: 44, fmt: v => Math.round(v) + 'ms' });
+      }
+      function drawTemp() {
+        const F = S.unit === 'F', v = TEMPH.map((x, i) => i === TEMPH.length - 1 ? S.temp : x), conv = x => F ? x : C(x);
+        lineChart($('#tempChart'), { label: 'Temperature by hour', labels: ['6a', '7a', '8a', '9a', '10a', '11a', '12p', '1p', '2p', '3p'], values: v.map(conv), min: F ? 97 : 36, max: F ? 101 : 38.5, ticks: F ? 4 : 5, h: 170, pt: 16, fmt: x => x.toFixed(1) + (F ? '°F' : '°C'), base: { v: conv(100.4), label: 'Fever ' + conv(100.4).toFixed(1) + '°' } });
+      }
+      function drawCharts() { drawActivity(); if (!$('#clin').hidden) { drawPtt(); drawTemp() } }
+      function drawPPG() {
+        const c = $('#ppg'); if (!c || $('#clin').hidden) return;
+        const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight; if (!w) return;
+        if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr) }
+        const x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
+        const cs = getComputedStyle(root), line = cs.getPropertyValue('--line').trim(), teal = cs.getPropertyValue('--teal').trim(), muted = cs.getPropertyValue('--muted').trim();
+        x.strokeStyle = line; x.lineWidth = 1;
+        for (let i = 1; i < 4; i++) { const y = h * i / 4; x.beginPath(); x.moveTo(0, y); x.lineTo(w, y); x.stroke() }
+        const key = S.ppgMode, lo = key === 'raw' ? -.8 : -.1, hi = key === 'raw' ? 2.1 : 1.6;
+        x.strokeStyle = teal; x.lineWidth = 2; x.lineJoin = 'round'; x.beginPath();
+        PPG.forEach((s, i) => { const px = i / (PPG_N - 1) * w, py = h - (s[key] - lo) / (hi - lo) * h; i ? x.lineTo(px, py) : x.moveTo(px, py) }); x.stroke();
+        x.fillStyle = muted; x.font = '11px ' + (cs.getPropertyValue('--f-mono') || 'monospace'); x.fillText((key === 'raw' ? 'Raw' : 'Filtered') + ' · 25 Hz · 10 s window', 8, h - 8);
+      }
+      function ppgTick() {
+        S.ph += S.hr / 60 / 25; const ph = S.ph % 1, tt = S.ph * 60 / S.hr;
+        const sig = Math.exp(-Math.pow((ph - .18) / .07, 2)) + .4 * Math.exp(-Math.pow((ph - .5) / .1, 2));
+        PPG.shift(); PPG.push({ raw: sig + .35 * Math.sin(tt * .9) + (Math.random() - .5) * .25, filt: sig + (Math.random() - .5) * .02 });
+        drawPPG();
+      }
+
+      /* incidents */
+      function renderInc() {
+        const can = ROLES[S.role].resolve;
+        INC.sort((a, b) => b.t - a.t);
+        $('#incCount').textContent = INC.filter(i => i.status !== 'resolved').length + ' open';
+        $('#incList').innerHTML = INC.map(i => `<li class="inc ${i.status}"><time>${stamp(i.t)}</time><div><strong>${esc(i.title)}</strong><span class="d">${esc(i.detail)}</span></div><div class="inc-act"><span class="badge ${i.status}">${LBL[i.status]}</span>${i.status !== 'resolved' && can && !i.fall ? `<button class="btn sm" type="button" data-res="${i.id}">Mark resolved</button>` : ''}</div></li>`).join('');
+      }
+      function addInc(title, detail, status) { INC.unshift({ id: Date.now() + Math.random(), t: new Date(), title, detail, status }); renderInc(); toast('New alert: ' + title) }
+
+      /* meds */
+      function nowH() { const n = new Date(); return n.getHours() + n.getMinutes() / 60 }
+      function formatTime12(timeStr) {
+        if (!timeStr) return '';
+        const [hStr, mStr] = timeStr.split(':');
+        let h = parseInt(hStr, 10);
+        const m = mStr || '00';
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12;
+        if (h === 0) h = 12;
+        return `${h}:${m} ${ampm}`;
+      }
+      function timeStrToHourFloat(timeStr) {
+        if (!timeStr) return 0;
+        const [hStr, mStr] = timeStr.split(':');
+        return parseInt(hStr, 10) + (parseInt(mStr, 10) || 0) / 60;
+      }
+      function renderMeds() {
+        const done = MEDS.filter(m => m.done).length;
+        $('#medCount').textContent = done + ' of ' + MEDS.length + ' taken';
+        $('#medBar').style.width = MEDS.length ? (done / MEDS.length * 100) + '%' : '0%';
+        const periods = ['Morning', 'Afternoon', 'Evening', 'Night'];
+        $('#medList').innerHTML = periods.map(p => {
+          const list = MEDS.filter(m => m.p === p);
+          return `<div class="period">
+            <h3>${p}</h3>
+            ${list.length ? list.map(m => {
+            const od = !m.done && m.h < nowH();
+            return `<div class="med">
+                <div class="t">
+                  <b>${esc(m.name)} <span style="font-weight:400;color:var(--muted);font-size:12px">${esc(m.dose)}</span></b>
+                  <span>${esc(m.time)}</span>
+                </div>
+                <button class="med-status-btn ${m.done ? 'taken' : (od ? 'overdue' : 'pending')}" type="button" data-med="${m.id}" title="Click to toggle status (Taken / Not taken)">
+                  ${m.done ? `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg> Taken` : (od ? `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg> Overdue` : `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg> Pending`
+              )}
+                </button>
+                <button class="btn-del-med" type="button" data-del-med="${m.id}" title="Remove ${esc(m.name)}">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>`;
+          }).join('') : '<div style="font-size:11.5px;color:var(--muted);padding:4px 0 6px">No medicines scheduled</div>'}
+          </div>`;
+        }).join('');
+      }
+
+      /* conn + alert */
+      function renderConn() {
+        const c = $('#conn');
+        if (S.offline) { c.dataset.s = 'offline'; $('#connText').textContent = 'Gateway offline · buffering ' + S.buffer + ' samples' }
+        else if (S.flush) { c.dataset.s = 'sync'; $('#connText').textContent = 'Reconnected · syncing ' + S.buffer + ' buffered samples' }
+        else { c.dataset.s = 'online'; $('#connText').textContent = 'Online · Companion connected' }
+        $('#stale').hidden = !S.offline; $('#metrics').classList.toggle('stale', S.offline);
+        if ($('#simOffline')) $('#simOffline').textContent = S.offline ? 'Restore gateway internet' : 'Cut gateway internet';
+      }
+      function renderAlert() {
+        const el = $('#alert'), can = ROLES[S.role].resolve;
+        document.body.dataset.state = S.state;
+        if (S.state === 'normal') { el.hidden = true; el.className = 'alert'; el.innerHTML = ''; return }
+        el.hidden = false; el.className = 'alert ' + S.state;
+        if (S.state === 'verifying') {
+          el.innerHTML = `<div class="al-ic" aria-hidden="true">!</div><div><h2>Possible fall detected. Verifying.</h2><p class="al-p">Impact at ${fmtTime(S.fallAt)} followed by no movement. The companion asked "Are you alright?" and is waiting for a reply or a wristband button press.</p><div class="bar"><i id="cdBar"></i></div></div><div class="al-side"><div class="count" id="cd">0:30</div>${can ? '<button class="btn signal" type="button" data-act="safe">I confirmed she is safe</button>' : '<span class="muted">Caregivers have been notified</span>'}</div>`;
+        } else {
+          el.innerHTML = `<div class="al-ic" aria-hidden="true">!</div><div><h2>Emergency. No response to the fall check.</h2><p class="al-p">Emergency contacts were alerted at ${fmtTime(new Date())}. Margaret has not replied to the companion or pressed the wristband button.</p><ul class="contacts"><li>Priya Iyer, daughter <span>SMS and call placed</span></li><li>Dr. Sarah Jenkins' clinic <span>Alert sent</span></li><li>Sunita Nair, caregiver <span>Push notification</span></li></ul></div><div class="al-side">${can ? '<button class="btn signal" type="button" data-act="ack">Acknowledge and mark resolved</button>' : '<span class="muted">Waiting for a caregiver to acknowledge</span>'}</div>`;
+        }
+      }
+
+      /* fall state machine */
+      function startFall() {
+        if (S.state !== 'normal') { toast('A fall check is already in progress.'); return }
+        const now = new Date(); S.state = 'verifying'; S.deadline = Date.now() + 30000; S.boost = 26; S.fallAt = now;
+        S.fallInc = { id: Date.now(), t: now, title: 'Fall detected - verifying', detail: 'Impact spike followed by no movement. Waiting for the patient to respond.', status: 'pending', fall: true };
+        INC.unshift(S.fallInc);
+        say('sys', 'IMU: 3.1 g impact, then motion variance below threshold for 4 s');
+        say('agent', 'Margaret, are you alright? Say "I\'m fine" or press the button on your wristband.');
+        pushSummary('event'); renderAlert(); renderInc();
+      }
+      function resolveFall(how) {
+        if (S.state === 'normal') return;
+        const was = S.state, inc = S.fallInc, secs = Math.round((Date.now() - S.fallAt) / 1000);
+        S.state = 'normal';
+        inc.title = was === 'critical' ? 'Fall detected - emergency response acknowledged' : 'Fall detected - verified safe after check-in';
+        inc.detail = how + ' after ' + secs + ' s.'; inc.status = 'resolved'; inc.fall = false;
+        toast('Fall incident resolved.'); renderAlert(); renderInc(); pushSummary('event');
+      }
+      function escalate() {
+        S.state = 'critical'; const i = S.fallInc; i.status = 'critical'; i.title = 'Fall detected - no response, emergency contacts alerted'; i.detail = 'No reply to the companion or wristband within 30 s.';
+        say('sys', 'notify_contacts: Priya Iyer (SMS + call), Dr. Sarah Jenkins clinic (alert), Sunita Nair (push)');
+        renderAlert(); renderInc(); toast('No response. Emergency contacts have been alerted.');
+      }
+      function fallLoop() {
+        if (S.state === 'verifying') {
+          const rem = Math.max(0, (S.deadline - Date.now()) / 1000), cd = $('#cd');
+          if (cd) { cd.textContent = '0:' + String(Math.ceil(rem)).padStart(2, '0'); $('#cdBar').style.width = (rem / 30 * 100) + '%' }
+          if (rem <= 0) escalate();
+        }
+        const lc = $('#liveClock'); if (lc) lc.textContent = new Date().toLocaleTimeString('en-US');
+      }
+
+      /* RAG aggregation */
+      function buildSummary() {
+        const w = S.win.slice(-900), a = k => mean(w.map(s => s[k]));
+        const open = INC.filter(i => i.status !== 'resolved'), recent = INC.filter(i => i.status === 'resolved').slice(0, 1);
+        const ev = [...open.map(i => i.title.toLowerCase() + ' (' + i.status + ')'), ...recent.map(i => i.title.toLowerCase() + ' at ' + fmtTime(i.t) + ' resolved')].slice(0, 2).join('; ');
+        return `${stamp(new Date())} - HR avg: ${a('hr').toFixed(0)} bpm, SpO2: ${a('spo2').toFixed(0)}%, Temp: ${a('temp').toFixed(1)}°F, Resp: ${a('rr').toFixed(0)}/min. Meds ${MEDS.filter(m => m.done).length}/${MEDS.length} taken.${ev ? ' Events: ' + ev + '.' : ''}`;
+      }
+      function pushSummary(trigger) {
+        if (S.offline) { S.pendingPush = trigger; toast('Gateway offline. Summary queued for the companion knowledge base.'); return }
+        KB.unshift({ trigger, text: buildSummary() }); if (KB.length > 8) KB.pop(); renderKB();
+        if (trigger !== 'scheduled') toast('Companion knowledge base updated (' + trigger + ').');
+      }
+      function renderKB() {
+        $('#kbList').innerHTML = KB.slice(0, 4).map(k => `<li><span class="kbt">${k.trigger}</span>${esc(k.text)}</li>`).join('');
+        const tok = KB.slice(0, 4).reduce((a, k) => a + Math.ceil(k.text.length / 4), 0);
+        $('#kbMeta').textContent = KB.length + ' summaries stored · newest 4 use about ' + tok + ' tokens.';
+      }
+      function renderNext() {
+        const n = new Date(), nx = new Date(n); nx.setSeconds(0, 0); nx.setMinutes(Math.floor(n.getMinutes() / 15) * 15 + 15);
+        const s = Math.max(0, Math.round((nx - n) / 1000));
+        $('#kbNext').textContent = 'Next scheduled push ' + fmtTime(nx) + ' (in ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + '). Abnormal readings push immediately.';
+      }
+
+      /* voice companion */
+      function say(who, text) { TX.push({ who, text }); if (TX.length > 40) TX.shift(); renderTx() }
+      function renderTx() {
+        const ul = $('#tx');
+        ul.innerHTML = TX.map(m => `<li class="line ${m.who}">${m.who === 'sys' ? '' : `<span class="who">${m.who === 'agent' ? 'Companion' : 'Margaret'}</span>`}${esc(m.text)}</li>`).join('');
+        ul.scrollTop = ul.scrollHeight;
+      }
+      function hook(name, payload) { say('sys', 'POST /webhooks/elevenlabs/tools  ' + name + ' ' + JSON.stringify(payload)) }
+      function utter(text) {
+        text = text.trim(); if (!text) return;
+        say('patient', text);
+        setTimeout(() => {
+          const t = text.toLowerCase();
+          if (/chest|can't breathe|cannot breathe|severe pain/.test(t)) {
+            say('agent', "I'm alerting your caregiver and your doctor right now. Please stay where you are.");
+            hook('flag_symptom', { symptom: 'chest pain', severity: 'high' }); addInc('Patient reports chest pain', 'Reported to the companion. Doctor and caregiver alerted.', 'critical'); pushSummary('event');
+          } else if (/dizz|faint|light.?head|spinning/.test(t)) {
+            say('agent', `Thank you for telling me. Please sit down and stay put. Your heart rate is ${Math.round(S.hr)} bpm and your temperature is ${tempStr(S.temp)}. I have told your caregiver.`);
+            hook('flag_symptom', { symptom: 'dizziness', severity: 'moderate' }); addInc('Patient reports dizziness', 'Reported to the companion. Caregiver notified.', 'pending'); pushSummary('event');
+          } else if (/temp|fever|warm|hot/.test(t)) {
+            const d = S.temp - 98.4;
+            say('agent', d > .5 ? `Your temperature has risen slightly to ${tempStr(S.temp)} since this morning. Remember to drink some water.` : `Your temperature is ${tempStr(S.temp)}, about the same as this morning.`);
+          } else if (/medic|pill|tablet|dose/.test(t)) {
+            const done = MEDS.filter(m => m.done).length, nx = MEDS.find(m => !m.done);
+            say('agent', `You have taken ${done} of ${MEDS.length} medicines today.` + (nx ? ` Next is ${nx.name} ${nx.dose}, due ${nx.time}.` : ' You are all done for today.'));
+          } else if (/\b(fine|okay|ok|alright|good)\b/.test(t)) {
+            if (S.state !== 'normal') { say('agent', 'I am glad you are safe. I have told your caregiver.'); resolveFall('Patient replied "I am fine" to the companion') }
+            else say('agent', 'Good to hear. I am here if you need anything.');
+          } else say('agent', 'I am here. Would you like me to let your caregiver know?');
+        }, 700);
+      }
+
+      /* Raspberry Pi Camera integration (cam_server.py) */
+      const DEFAULT_PI_IP = '192.168.31.231';
+      function getPiIp() {
+        return localStorage.getItem('baymaxcare_pi_ip') || DEFAULT_PI_IP;
+      }
+      function getPiBaseUrl() {
+        return `http://${getPiIp()}:5000`;
+      }
+      function updatePiIpLabel() {
+        if ($('#piIpLabel')) $('#piIpLabel').textContent = getPiIp();
+      }
+      function configurePiIp() {
+        const cur = getPiIp();
+        const next = prompt('Enter your Raspberry Pi IP address (running cam_server.py):', cur);
+        if (next && next.trim()) {
+          const cleaned = next.trim().replace(/^https?:\/\//, '').replace(/:5000\/?$/, '');
+          localStorage.setItem('baymaxcare_pi_ip', cleaned);
+          updatePiIpLabel();
+          toast(`Raspberry Pi IP set to ${cleaned}`);
+          if (S.cam === 'live') {
+            requestLive();
+          }
+        }
+      }
+      if ($('#btnPiSettings')) {
+        $('#btnPiSettings').addEventListener('click', configurePiIp);
+      }
+      updatePiIpLabel();
+
+      window.useSimulatedFeed = function() {
+        S.cam = 'live';
+        S.camMode = 'sim';
+        renderCam();
+        toast('Switched to simulated Baymax camera feed.');
+      };
+
+      window.retryPiCam = function() {
+        requestLive();
+      };
+
+      /* Camera Theater & Maximize Mode */
+      function openCameraTheater() {
+        const modal = $('#camTheaterModal');
+        const body = $('#camTheaterBody');
+        const piIp = getPiIp();
+        const piBase = getPiBaseUrl();
+        if ($('#theaterPiLabel')) $('#theaterPiLabel').textContent = `RPi: ${piIp}:5000`;
+
+        if (S.cam === 'live' && S.camMode === 'rpi') {
+          body.innerHTML = `<img src="${piBase}/video_feed?t=${Date.now()}" alt="Maximized Baymax Camera Feed" style="width:100%;height:100%;object-fit:contain" />`;
+        } else if (S.cam === 'live' && S.camMode === 'sim') {
+          body.innerHTML = SCENE;
+        } else {
+          requestLive();
+          body.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff">
+              <span class="rpi-pulse-dot" style="width:14px;height:14px;background:#eab308;box-shadow:0 0 12px #eab308"></span>
+              <span style="font-weight:600;font-size:14px">Connecting to Baymax Camera (${piIp}:5000)...</span>
+            </div>
+          `;
+          setTimeout(() => {
+            if (S.cam === 'live' && S.camMode === 'rpi') {
+              body.innerHTML = `<img src="${piBase}/video_feed?t=${Date.now()}" alt="Maximized Baymax Camera Feed" style="width:100%;height:100%;object-fit:contain" />`;
+            } else if (S.cam === 'failed') {
+              body.innerHTML = `
+                <div style="text-align:center;color:#fff;padding:20px;max-width:400px">
+                  <div style="font-size:28px;margin-bottom:8px">📡</div>
+                  <h3 style="margin:0 0 8px;font-size:16px">Cannot reach Baymax Camera (${piIp}:5000)</h3>
+                  <p style="font-size:12.5px;color:#94a3b8;line-height:1.4">Ensure cam_server.py is running on your Pi and connected to the same Wi-Fi network.</p>
+                  <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+                    <button class="cam-theater-btn" onclick="configurePiIp()">Change IP</button>
+                    <button class="cam-theater-btn" onclick="openCameraTheater()">Retry</button>
+                    <button class="cam-theater-btn" onclick="useSimulatedFeed();openCameraTheater()">Simulate</button>
+                  </div>
+                </div>
+              `;
+            }
+          }, 1500);
+        }
+
+        modal.classList.add('open');
+      }
+
+      function closeCameraTheater() {
+        const modal = $('#camTheaterModal');
+        if (modal) modal.classList.remove('open');
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+
+      function toggleNativeFullscreen() {
+        const box = $('#camTheaterBox');
+        if (!document.fullscreenElement) {
+          if (box.requestFullscreen) box.requestFullscreen();
+          else if (box.webkitRequestFullscreen) box.webkitRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+        }
+      }
+
+      window.openCameraTheater = openCameraTheater;
+      window.closeCameraTheater = closeCameraTheater;
+
+      if ($('#btnMaximizeCam')) $('#btnMaximizeCam').addEventListener('click', openCameraTheater);
+      if ($('#btnCloseTheater')) $('#btnCloseTheater').addEventListener('click', closeCameraTheater);
+      if ($('#btnTheaterFullscreen')) $('#btnTheaterFullscreen').addEventListener('click', toggleNativeFullscreen);
+      if ($('#camTheaterModal')) {
+        $('#camTheaterModal').addEventListener('click', (e) => {
+          if (e.target === $('#camTheaterModal')) closeCameraTheater();
+        });
+      }
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeCameraTheater();
+      });
+
+      /* camera */
+      const SCENE = '<svg viewBox="0 0 320 180" role="img" aria-label="Baymax camera view"><rect width="320" height="180" style="fill:var(--cam-wall)"/><rect y="128" width="320" height="52" style="fill:var(--cam-floor)"/><rect x="214" y="22" width="76" height="70" rx="4" style="fill:var(--cam-win)"/><path d="M252 22v70M214 57h76" style="stroke:var(--cam-wall);stroke-width:3"/><rect x="92" y="84" width="112" height="58" rx="14" style="fill:var(--cam-chair)"/><rect x="82" y="104" width="22" height="44" rx="9" style="fill:var(--cam-chair)"/><rect x="192" y="104" width="22" height="44" rx="9" style="fill:var(--cam-chair)"/><circle cx="148" cy="70" r="11" style="fill:var(--cam-ink)"/><rect x="132" y="82" width="32" height="40" rx="12" style="fill:var(--cam-ink)"/><rect x="104" y="140" width="88" height="6" rx="3" style="fill:var(--cam-ink);opacity:.35"/></svg>';
+
+      function renderCam() {
+        const v = $('#camView'); let cls = 'cam', html;
+        const piIp = getPiIp();
+        const piBase = getPiBaseUrl();
+
+        if (S.cam === 'req') {
+          html = SCENE + `<div class="ov tl rpi-badge-live"><span class="rpi-pulse-dot" style="background:#eab308;box-shadow:0 0 8px #eab308"></span>Connecting to Pi (${piIp}:5000)...</div>`;
+        } else if (S.cam === 'live') {
+          cls += ' live';
+          if (S.camMode === 'rpi') {
+            html = `
+              <img class="cam-feed-img" id="rpiFeedImg" src="${piBase}/video_feed?t=${Date.now()}" alt="Baymax Camera Live Stream" />
+              <div class="ov tl rpi-badge-live">
+                <span class="rpi-pulse-dot"></span>
+                <span>LIVE · Baymax Camera</span>
+              </div>
+              <div class="ov tr" id="liveClock">${new Date().toLocaleTimeString('en-US')}</div>
+              <div class="ov bl" style="display:flex;align-items:center;gap:6px">
+                <span>RPi: ${piIp}:5000</span>
+                <span style="cursor:pointer" onclick="configurePiIp()" title="Change IP">⚙️</span>
+              </div>
+            `;
+          } else {
+            html = SCENE + '<div class="ov tl rpi-badge-live"><span class="rpi-pulse-dot"></span>LIVE · Simulated</div><div class="ov tr" id="liveClock">' + new Date().toLocaleTimeString('en-US') + '</div><div class="ov bl">Baymax Sensor Hub</div>';
+          }
+        } else if (S.cam === 'failed') {
+          html = `
+            ${SCENE}
+            <div class="cam-error-box">
+              <div style="font-size:20px">📡</div>
+              <div style="font-weight:600;font-size:13px">Cannot reach Baymax Camera (${piIp}:5000)</div>
+              <div style="font-size:11.5px;color:#94a3b8;max-width:280px;line-height:1.4">
+                Ensure <code>cam_server.py</code> is running on your Pi and connected to the same Wi-Fi network.
+              </div>
+              <div style="display:flex;gap:7px;margin-top:4px">
+                <button class="btn sm" type="button" onclick="configurePiIp()" style="background:#334155;color:#fff;border:0;padding:4px 9px;font-size:11.5px">Change IP</button>
+                <button class="btn sm" type="button" onclick="retryPiCam()" style="background:var(--teal);color:#fff;border:0;padding:4px 9px;font-size:11.5px">Retry</button>
+                <button class="btn sm" type="button" onclick="useSimulatedFeed()" style="background:transparent;color:var(--teal);border:1px solid var(--teal);padding:4px 9px;font-size:11.5px">Simulate Feed</button>
+              </div>
+            </div>
+          `;
+        } else {
+          html = SCENE + '<div class="ov tl">Snapshot</div><div class="ov bl">' + snapTime + '</div>';
+        }
+
+        v.className = cls; v.innerHTML = html;
+
+        if (S.cam === 'live' && S.camMode === 'rpi') {
+          const img = $('#rpiFeedImg');
+          if (img) {
+            img.onerror = () => {
+              console.warn('Pi stream image load failed.');
+              S.cam = 'failed';
+              renderCam();
+            };
+          }
+        }
+
+        $('#btnLive').textContent = S.cam === 'live' ? 'End live view' : (S.cam === 'req' ? 'Connecting to Pi...' : 'Request live view');
+        $('#btnLive').disabled = S.cam === 'req';
+      }
+
+      async function requestLive() {
+        if (S.cam === 'live') {
+          try {
+            fetch(`${getPiBaseUrl()}/stop`, { mode: 'no-cors' }).catch(() => {});
+          } catch (e) {}
+          S.cam = 'snap';
+          renderCam();
+          toast('Live view stopped. Returned to snapshot mode.');
+          return;
+        }
+
+        S.cam = 'req';
+        renderCam();
+
+        const piUrl = getPiBaseUrl();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+        try {
+          await fetch(`${piUrl}/start`, { mode: 'no-cors', signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          S.cam = 'live';
+          S.camMode = 'rpi';
+          renderCam();
+          toast(`Live view connected to Baymax camera at ${getPiIp()}:5000`);
+        } catch (err) {
+          clearTimeout(timeoutId);
+          console.warn(`Could not connect to Raspberry Pi at ${piUrl}:`, err);
+          S.cam = 'failed';
+          renderCam();
+        }
+      }
+
+      /* offline resilience */
+      function setOffline(v) {
+        if (v) { S.offline = true; S.buffer = 0; toast('Gateway lost internet. Readings are buffered in local SQLite.') }
+        else {
+          S.offline = false; S.flush = true; renderConn();
+          setTimeout(() => {
+            const n = S.buffer; S.buffer = 0; S.flush = false; renderConn(); renderVitals(); toast('Gateway reconnected. ' + n + ' buffered samples synced.');
+            if (S.pendingPush) { const p = S.pendingPush; S.pendingPush = null; pushSummary(p) }
+          }, 1500)
+        }
+        renderConn();
+      }
+
+      /* roles */
+      function setRole(r) {
+        S.role = r;
+        const R = ROLES[r];
+        const docName = sessionStorage.getItem('baymaxcare_doctor_name') || sessionStorage.getItem('careloop_doctor_name') || R.user;
+        const docInit = sessionStorage.getItem('baymaxcare_doctor_init') || R.init;
+        $('#uname').textContent = docName;
+        $('#userAv').textContent = docInit;
+        $('#clin').hidden = !R.clin;
+        renderVitals(); renderAlert(); renderInc(); drawCharts(); drawPPG();
+      }
+
+      /* main loop */
+      function tick() {
+        S.t++;
+        S.hr = clamp(S.hr + (74 + S.boost - S.hr) * .25 + (Math.random() - .5) * 3, 52, 140);
+        S.spo2 = clamp(S.spo2 + (97.6 - S.spo2) * .2 + (Math.random() - .5) * .6, 88, 100);
+        S.temp = clamp(S.temp + (99.2 - S.temp) * .05 + (Math.random() - .5) * .04, 96, 103);
+        S.rr = clamp(S.rr + (16 - S.rr) * .2 + (Math.random() - .5) * .8, 10, 30);
+        S.boost = S.boost * .9 < .5 ? 0 : S.boost * .9;
+        S.hist.push(S.hr); S.hist.shift();
+        if (S.spo2Hist) { S.spo2Hist.push(S.spo2); S.spo2Hist.shift(); }
+        S.win.push({ hr: S.hr, spo2: S.spo2, temp: S.temp, rr: S.rr }); if (S.win.length > 1800) S.win.shift();
+        if (S.offline) { S.buffer++; renderConn() } else renderVitals();
+        if (S.t % 5 === 0) { PTT.push(212 + (Math.random() - .5) * 14 - (S.hr - 74) * .3); PTT.shift(); if (!$('#clin').hidden) drawPtt() }
+        if (S.t % 10 === 0 && !$('#clin').hidden) drawTemp();
+        if ((S.hr > 110 || S.spo2 < 93 || S.temp >= 100.4) && Date.now() - S.lastThr > 60000) { S.lastThr = Date.now(); pushSummary('threshold') }
+        const n = new Date(), slot = n.getHours() * 60 + n.getMinutes();
+        if (n.getMinutes() % 15 === 0 && S.lastSched !== slot) { S.lastSched = slot; pushSummary('scheduled') }
+        renderNext();
+      }
+
+      /* events */
+      $('#logoutBtn').addEventListener('click', () => { sessionStorage.clear(); window.location.href = 'login.html' });
+      $('#unitBtn').addEventListener('click', () => { S.unit = S.unit === 'F' ? 'C' : 'F'; renderVitals(); if (!$('#clin').hidden) drawTemp() });
+      if ($('#simFall')) $('#simFall').addEventListener('click', startFall);
+      if ($('#simBtn')) $('#simBtn').addEventListener('click', () => { if (S.state === 'normal') toast('No fall check is active.'); else resolveFall('Wristband button pressed') });
+      if ($('#simDizzy')) $('#simDizzy').addEventListener('click', () => utter('I feel dizzy.'));
+      if ($('#simOffline')) $('#simOffline').addEventListener('click', () => setOffline(!S.offline));
+      $('#btnLive').addEventListener('click', requestLive);
+      $('#btnCheck').addEventListener('click', () => { say('agent', 'Hi Margaret, ' + ROLES[S.role].user + ' would like to know how you are feeling today.'); setTimeout(() => say('patient', 'Feeling alright, just a bit tired.'), 1600); toast('Check-in sent to the companion.') });
+      $('#kbPush').addEventListener('click', () => pushSummary('manual'));
+      $('#chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) utter(b.textContent) });
+      $('#vform').addEventListener('submit', e => { e.preventDefault(); const i = $('#vtext'); utter(i.value); i.value = '' });
+      $$('[data-act-mode]').forEach(b => b.addEventListener('click', () => { S.actMode = b.dataset.actMode; $$('[data-act-mode]').forEach(x => x.setAttribute('aria-pressed', x === b)); drawActivity() }));
+      $$('[data-ppg]').forEach(b => b.addEventListener('click', () => { S.ppgMode = b.dataset.ppg; $$('[data-ppg]').forEach(x => x.setAttribute('aria-pressed', x === b)); drawPPG(); }));
+
+      /* medication add form events */
+      $('#openAddMedBtn').addEventListener('click', () => {
+        const f = $('#addMedForm');
+        f.hidden = !f.hidden;
+        if (!f.hidden) $('#newMedName').focus();
+      });
+      $('#cancelAddMedBtn').addEventListener('click', () => {
+        $('#addMedForm').hidden = true;
+      });
+      $('#addMedForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const name = $('#newMedName').value.trim();
+        const dose = $('#newMedDose').value.trim();
+        const p = $('#newMedPeriod').value;
+        const timeVal = $('#newMedTime').value;
+        if (!name || !dose || !timeVal) return;
+        const timeFormatted = formatTime12(timeVal);
+        const hourFloat = timeStrToHourFloat(timeVal);
+        const id = 'med_' + Date.now();
+        MEDS.push({
+          id,
+          p,
+          name,
+          dose,
+          time: timeFormatted,
+          h: hourFloat,
+          done: false
+        });
+        renderMeds();
+        $('#addMedForm').reset();
+        $('#newMedTime').value = '08:00';
+        $('#addMedForm').hidden = true;
+        toast(`Added ${name} (${dose}) to ${p} schedule at ${timeFormatted}.`);
+      });
+
+      document.addEventListener('click', e => {
+        const d = e.target.closest('[data-del-med]');
+        if (d) {
+          const medIdx = MEDS.findIndex(x => String(x.id) === String(d.dataset.delMed));
+          if (medIdx !== -1) {
+            const removed = MEDS.splice(medIdx, 1)[0];
+            renderMeds();
+            toast(`Removed ${removed.name} from schedule.`);
+          }
+          return;
+        }
+        const m = e.target.closest('[data-med]');
+        if (m) {
+          const med = MEDS.find(x => String(x.id) === String(m.dataset.med));
+          if (med) {
+            med.done = !med.done;
+            if (med.id === 'calc' && med.done) { const i = INC.find(x => x.id === 2); if (i && i.status !== 'resolved') { i.status = 'resolved'; i.detail = 'Marked as taken at ' + fmtTime(new Date()) + '.'; renderInc() } }
+            renderMeds();
+            toast(`${med.name} marked as ${med.done ? 'taken' : 'not taken'}.`);
+          }
+          return;
+        }
+        const r = e.target.closest('[data-res]');
+        if (r) { const i = INC.find(x => String(x.id) === r.dataset.res); if (i) { i.status = 'resolved'; i.detail += ' Resolved by ' + ROLES[S.role].user + ' at ' + fmtTime(new Date()) + '.'; renderInc(); toast('Marked resolved.') } return }
+        const a = e.target.closest('[data-act]');
+        if (a) { resolveFall(a.dataset.act === 'safe' ? ROLES[S.role].user + ' confirmed the patient is safe' : 'Caregiver acknowledged the emergency response') }
+      });
+      let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawCharts(); drawPPG() }, 120) });
+
+      /* Drawer & Swipe Navigation */
+      const drawer = $('#drawerMenu');
+      const drawerBackdrop = $('#drawerBackdrop');
+      const menuBtn = $('#menuBtn');
+      const drawerCloseBtn = $('#drawerCloseBtn');
+      let isDrawerOpen = false;
+
+      function openDrawer() {
+        isDrawerOpen = true;
+        drawer.classList.add('open');
+        drawerBackdrop.classList.add('show');
+        drawer.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeDrawer() {
+        isDrawerOpen = false;
+        drawer.classList.remove('open');
+        drawerBackdrop.classList.remove('show');
+        drawer.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+      }
+
+      menuBtn.addEventListener('click', openDrawer);
+      drawerCloseBtn.addEventListener('click', closeDrawer);
+      drawerBackdrop.addEventListener('click', closeDrawer);
+
+      /* Touch / Swipe Gestures */
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchCurrentX = 0;
+
+      window.addEventListener('touchstart', e => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchCurrentX = touchStartX;
+      }, { passive: true });
+
+      window.addEventListener('touchmove', e => {
+        touchCurrentX = e.touches[0].clientX;
+      }, { passive: true });
+
+      window.addEventListener('touchend', e => {
+        const diffX = touchCurrentX - touchStartX;
+        const diffY = Math.abs(e.changedTouches[0].clientY - touchStartY);
+        if (diffY < 75) {
+          if (!isDrawerOpen && touchStartX < 55 && diffX > 60) {
+            openDrawer();
+          } else if (isDrawerOpen && diffX < -60) {
+            closeDrawer();
+          }
+        }
+      });
+
+      /* Modal Dialog Management */
+      const infoModalBackdrop = $('#infoModalBackdrop');
+      const infoModalTitle = $('#infoModalTitle');
+      const infoModalBody = $('#infoModalBody');
+      const infoModalCloseBtn = $('#infoModalCloseBtn');
+      const infoModalDoneBtn = $('#infoModalDoneBtn');
+
+      function openInfoModal(title, contentHtml) {
+        infoModalTitle.textContent = title;
+        infoModalBody.innerHTML = contentHtml;
+        infoModalBackdrop.classList.add('show');
+        infoModalBackdrop.setAttribute('aria-hidden', 'false');
+        closeDrawer();
+      }
+
+      function closeInfoModal() {
+        infoModalBackdrop.classList.remove('show');
+        infoModalBackdrop.setAttribute('aria-hidden', 'true');
+      }
+
+      infoModalCloseBtn.addEventListener('click', closeInfoModal);
+      infoModalDoneBtn.addEventListener('click', closeInfoModal);
+      infoModalBackdrop.addEventListener('click', e => {
+        if (e.target === infoModalBackdrop) closeInfoModal();
+      });
+
+      window.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          if (infoModalBackdrop.classList.contains('show')) closeInfoModal();
+          else if (isDrawerOpen) closeDrawer();
+        }
+      });
+
+      const PENCIL_SVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
+
+      /* Global click handler for box edit pencils */
+      document.addEventListener('click', e => {
+        const editBtn = e.target.closest('.box-edit-btn');
+        if (editBtn) {
+          const card = editBtn.closest('.info-list-card, .info-cell, .card');
+          if (!card) return;
+          const editableTarget = card.querySelector('.editable-content') || card;
+          const isEditing = editableTarget.getAttribute('contenteditable') === 'true';
+          if (!isEditing) {
+            editableTarget.setAttribute('contenteditable', 'true');
+            editableTarget.focus();
+            card.classList.add('is-editing');
+            editBtn.classList.add('active');
+            editBtn.setAttribute('title', 'Save changes');
+            editBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+            toast('Editing enabled. Click checkmark when finished.');
+          } else {
+            editableTarget.setAttribute('contenteditable', 'false');
+            card.classList.remove('is-editing');
+            editBtn.classList.remove('active');
+            editBtn.setAttribute('title', 'Edit this section');
+            editBtn.innerHTML = PENCIL_SVG;
+            toast('Changes saved successfully.');
+          }
+        }
+      });
+
+      /* Dynamic clinical records store */
+      let PATIENT_DATA = {
+        name: 'Margaret Iyer',
+        age: 78,
+        gender: 'Female',
+        id: 'P-1042',
+        mrn: '#MRN-94820',
+        bloodType: 'O Positive (O+)',
+        guardian_name: 'Sunita Nair',
+        guardian_username: 'margaret_iyer_care',
+        guardian_password: 'Care#Iyer2026',
+        diagnoses: [
+          '<strong>Mild Cognitive Impairment (MCI)</strong> - Diagnosed 2024; active monitoring via conversational companion.',
+          '<strong>Essential Hypertension (Stage 1)</strong> - Managed with Amlodipine 5 mg daily.',
+          '<strong>High Fall Risk</strong> - Morse Fall Scale score 65; smart wristband continuous accelerometer enabled.',
+          '<strong>Osteopenia</strong> - Lumbar spine & hip T-score -2.1; Calcium + Vit D therapy.'
+        ],
+        allergies: [
+          '⚠️ <strong>Penicillin:</strong> Severe cutaneous rash and urticaria.',
+          '⚠️ <strong>Sulfa Drugs:</strong> Moderate gastrointestinal distress.'
+        ],
+        vitalsBaseline: {
+          restingHr: '72 bpm',
+          spo2: '97-98%',
+          temp: '98.4°F',
+          bp: '128/82 mmHg',
+          rr: '16/min',
+          codeStatus: 'Full Code (Healthcare Proxy on file with Sunita Nair & Priya Iyer)'
+        }
+      };
+
+      let MED_HISTORY_DATA = {
+        activeCount: 6,
+        adherence30Day: '95.4%',
+        regimenHtml: `
+          <div><strong>Metformin 500 mg</strong> · Oral, 8:00 AM daily (Type 2 Diabetes prevention) · <em>Started Jan 2025 · 98% adherence</em></div>
+          <div><strong>Amlodipine 5 mg</strong> · Oral, 8:00 AM daily (Hypertension control) · <em>Started Mar 2025 · 96% adherence</em></div>
+          <div><strong>Vitamin D3 1000 IU</strong> · Oral, 1:00 PM daily (Bone density) · <em>Started Nov 2025 · 92% adherence</em></div>
+          <div><strong>Calcium 500 mg</strong> · Oral, 2:00 PM daily (Osteopenia) · <em>Started Nov 2025 · 89% adherence</em></div>
+          <div><strong>Atorvastatin 20 mg</strong> · Oral, 7:00 PM daily (Lipid profile) · <em>Started Aug 2024 · 94% adherence</em></div>
+          <div><strong>Melatonin 3 mg</strong> · Oral, 9:30 PM PRN (Sleep cycle) · <em>As needed</em></div>
+        `,
+        discontinuedHtml: `<strong>Lisinopril 10 mg</strong> - Discontinued Oct 2025 due to medication-induced dry cough. Successfully transitioned to Amlodipine 5 mg.`,
+        pharmacyHtml: `<strong>Walgreens Pharmacy #4829</strong> · 1024 Medical Plaza Way<br>Phone: (555) 789-0123 · Rx Automated Refill Protocol: Active`
+      };
+
+      let GUARDIAN_DATA = {
+        caregiver: {
+          name: 'Sunita Nair',
+          role: 'Certified Nursing Assistant & Full-time Caregiver',
+          status: 'Active On-Site',
+          phone: '+1 (555) 234-5678',
+          email: 'sunita.nair@baymaxcare.demo',
+          coverage: 'Daily 8:00 AM - 8:00 PM (equipped with active companion receiver)'
+        },
+        proxy: {
+          name: 'Priya Iyer',
+          role: 'Daughter · Legal Medical Decision Maker',
+          badge: 'Family Proxy',
+          phone: '+1 (555) 876-5432',
+          email: 'priya.iyer@example.com',
+          address: '742 Evergreen Terrace, Apt 4B, Springfield'
+        },
+        escalation: [
+          'Baymax companion prompts Margaret Iyer via smart audio check-in for 30s.',
+          'Direct alert pushed to Sunita Nair\'s phone and wrist device.',
+          'If unacknowledged within 2 minutes, emergency dispatch is notified and priority SMS sent to Priya Iyer.'
+        ]
+      };
+
+      function updatePatientBanner() {
+        const initials = PATIENT_DATA.name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase() || 'PT';
+        if ($('#drawerPatientAvatar')) $('#drawerPatientAvatar').textContent = initials;
+        if ($('#drawerPatientName')) $('#drawerPatientName').textContent = PATIENT_DATA.name;
+        if ($('#drawerPatientSub')) $('#drawerPatientSub').textContent = `${PATIENT_DATA.age} yrs · Patient ID ${PATIENT_DATA.id}`;
+        if ($('#mainPatientAvatar')) $('#mainPatientAvatar').textContent = initials;
+        if ($('#mainPatientName')) $('#mainPatientName').textContent = PATIENT_DATA.name;
+        if ($('#mainPatientSub')) $('#mainPatientSub').textContent = `${PATIENT_DATA.age} · ID ${PATIENT_DATA.id} · Verified`;
+      }
+
+      function renderPatientInfoContent() {
+        return `
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <span>Demographics & Identity</span>
+              <button class="box-edit-btn" type="button" title="Edit Demographics" aria-label="Edit Demographics">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <div class="info-grid" style="margin-bottom:0">
+                <div class="info-cell">
+                  <span class="lbl">Full Name</span>
+                  <span class="val">${esc(PATIENT_DATA.name)}</span>
+                </div>
+                <div class="info-cell">
+                  <span class="lbl">Age & Gender</span>
+                  <span class="val">${PATIENT_DATA.age} Years · ${esc(PATIENT_DATA.gender)}</span>
+                </div>
+                <div class="info-cell">
+                  <span class="lbl">Patient ID / MRN</span>
+                  <span class="val">${esc(PATIENT_DATA.id)} · ${esc(PATIENT_DATA.mrn)}</span>
+                </div>
+                <div class="info-cell">
+                  <span class="lbl">Blood Type</span>
+                  <span class="val">${esc(PATIENT_DATA.bloodType)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <span>Clinical Diagnoses</span>
+              <button class="box-edit-btn" type="button" title="Edit Diagnoses" aria-label="Edit Diagnoses">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <ul style="margin:6px 0 0;padding-left:18px;color:var(--fg);font-size:12.5px;line-height:1.6">
+                ${PATIENT_DATA.diagnoses.map(d => `<li>${d}</li>`).join('')}
+              </ul>
+            </div>
+          </div>
+
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <span>Known Allergies & Sensitivities</span>
+              <button class="box-edit-btn" type="button" title="Edit Allergies" aria-label="Edit Allergies">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <div style="margin:4px 0 0;font-size:12.5px;color:var(--red);line-height:1.6">
+                ${PATIENT_DATA.allergies.map(a => `<div>${a}</div>`).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <span>Baseline Vitals & Code Status</span>
+              <button class="box-edit-btn" type="button" title="Edit Baseline Vitals" aria-label="Edit Baseline Vitals">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:4px">
+                Resting HR: <strong>${esc(PATIENT_DATA.vitalsBaseline.restingHr)}</strong> · Baseline SpO2: <strong>${esc(PATIENT_DATA.vitalsBaseline.spo2)}</strong> · Baseline Temp: <strong>${esc(PATIENT_DATA.vitalsBaseline.temp)}</strong><br>
+                Baseline BP: <strong>${esc(PATIENT_DATA.vitalsBaseline.bp)}</strong> · Respiratory Rate: <strong>${esc(PATIENT_DATA.vitalsBaseline.rr)}</strong><br>
+                Code Status: <strong>${esc(PATIENT_DATA.vitalsBaseline.codeStatus)}</strong>.
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list-card" style="border-left:3px solid var(--teal)">
+            <div class="info-list-title">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span>Guardian Portal Credentials</span>
+                <span class="badge ok" style="font-size:10px">Doctor Issued</span>
+              </div>
+              <button class="box-edit-btn" type="button" title="Edit Guardian Credentials" aria-label="Edit Guardian Credentials">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+                Assigned login credentials for the patient's family/caregiver to access the Guardian Dashboard:
+              </div>
+              <div class="info-grid" style="margin-bottom:0">
+                <div class="info-cell">
+                  <span class="lbl">Guardian Username</span>
+                  <span class="val" style="font-family:var(--f-mono);font-size:13px;color:var(--teal);display:flex;align-items:center;justify-content:space-between">
+                    <span>${esc(PATIENT_DATA.guardian_username || 'margaret_iyer_care')}</span>
+                    <button type="button" onclick="navigator.clipboard.writeText('${esc(PATIENT_DATA.guardian_username || 'margaret_iyer_care')}');alert('Username copied!')" style="background:none;border:0;cursor:pointer;font-size:12px" title="Copy Username">📋</button>
+                  </span>
+                </div>
+                <div class="info-cell">
+                  <span class="lbl">Guardian Password</span>
+                  <span class="val" style="font-family:var(--f-mono);font-size:13px;letter-spacing:0.5px;display:flex;align-items:center;justify-content:space-between">
+                    <span>${esc(PATIENT_DATA.guardian_password || 'Care#Iyer2026')}</span>
+                    <button type="button" onclick="navigator.clipboard.writeText('${esc(PATIENT_DATA.guardian_password || 'Care#Iyer2026')}');alert('Password copied!')" style="background:none;border:0;cursor:pointer;font-size:12px" title="Copy Password">📋</button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderMedHistoryContent() {
+        return `
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <span>Adherence Overview</span>
+              <button class="box-edit-btn" type="button" title="Edit Adherence Overview" aria-label="Edit Overview">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <div class="info-grid" style="margin-bottom:0">
+                <div class="info-cell">
+                  <span class="lbl">Active Prescriptions</span>
+                  <span class="val">${esc(String(MED_HISTORY_DATA.activeCount))} Medications</span>
+                </div>
+                <div class="info-cell">
+                  <span class="lbl">30-Day Adherence</span>
+                  <span class="val" style="color:var(--green)">${esc(MED_HISTORY_DATA.adherence30Day)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span>Active Regimen</span>
+                <span class="badge ok">Current</span>
+              </div>
+              <button class="box-edit-btn" type="button" title="Edit Active Regimen" aria-label="Edit Regimen">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <div style="font-size:12.5px;line-height:1.7;margin-top:6px">
+                ${MED_HISTORY_DATA.regimenHtml}
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span>Discontinued Medications</span>
+                <span class="badge" style="background:var(--line);color:var(--muted)">Archived</span>
+              </div>
+              <button class="box-edit-btn" type="button" title="Edit Discontinued Medications" aria-label="Edit Discontinued">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <p style="margin:4px 0 0;font-size:12px;color:var(--muted)">
+                ${MED_HISTORY_DATA.discontinuedHtml}
+              </p>
+            </div>
+          </div>
+
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <span>Pharmacy Details</span>
+              <button class="box-edit-btn" type="button" title="Edit Pharmacy Details" aria-label="Edit Pharmacy">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <p style="margin:4px 0 0;font-size:12px;color:var(--muted)">
+                ${MED_HISTORY_DATA.pharmacyHtml}
+              </p>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderGuardianInfoContent() {
+        return `
+          <div class="info-list-card" style="border-left:3px solid var(--teal)">
+            <div class="info-list-title">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span>Primary In-Home Caregiver</span>
+                <span class="badge ok">${esc(GUARDIAN_DATA.caregiver.status)}</span>
+              </div>
+              <button class="box-edit-btn" type="button" title="Edit Primary Caregiver" aria-label="Edit Caregiver">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <div style="font-size:13.5px;font-weight:600;margin-top:4px">${esc(GUARDIAN_DATA.caregiver.name)}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(GUARDIAN_DATA.caregiver.role)}</div>
+              <div style="margin-top:8px;font-size:12.5px;line-height:1.6">
+                <div>📞 <strong>Phone:</strong> <a href="tel:${esc(GUARDIAN_DATA.caregiver.phone)}" style="color:var(--teal)">${esc(GUARDIAN_DATA.caregiver.phone)}</a></div>
+                <div>✉️ <strong>Email:</strong> ${esc(GUARDIAN_DATA.caregiver.email)}</div>
+                <div>🕒 <strong>Coverage:</strong> ${esc(GUARDIAN_DATA.caregiver.coverage)}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list-card" style="border-left:3px solid var(--amber)">
+            <div class="info-list-title">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span>Healthcare Proxy & Next of Kin</span>
+                <span class="badge warn">${esc(GUARDIAN_DATA.proxy.badge)}</span>
+              </div>
+              <button class="box-edit-btn" type="button" title="Edit Healthcare Proxy" aria-label="Edit Proxy">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <div style="font-size:13.5px;font-weight:600;margin-top:4px">${esc(GUARDIAN_DATA.proxy.name)}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(GUARDIAN_DATA.proxy.role)}</div>
+              <div style="margin-top:8px;font-size:12.5px;line-height:1.6">
+                <div>📞 <strong>Mobile:</strong> <a href="tel:${esc(GUARDIAN_DATA.proxy.phone)}" style="color:var(--teal)">${esc(GUARDIAN_DATA.proxy.phone)}</a></div>
+                <div>✉️ <strong>Email:</strong> ${esc(GUARDIAN_DATA.proxy.email)}</div>
+                <div>📍 <strong>Address:</strong> ${esc(GUARDIAN_DATA.proxy.address)}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <span>Emergency Escalation Sequence</span>
+              <button class="box-edit-btn" type="button" title="Edit Escalation Protocol" aria-label="Edit Protocol">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <ol style="margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--muted);line-height:1.5">
+                ${GUARDIAN_DATA.escalation.map(step => `<li>${step}</li>`).join('')}
+              </ol>
+            </div>
+          </div>
+        `;
+      }
+
+      /* Sample Clinical Records Profiles for One-Click Testing */
+      const SAMPLE_DOCS = {
+        eleanor: {
+          fileName: 'Geriatric_Assessment_Eleanor_Vance.docx',
+          fileSize: '890 KB',
+          fileType: 'Word Document',
+          patient: {
+            name: 'Eleanor Vance',
+            age: 82,
+            gender: 'Female',
+            id: 'P-2098',
+            mrn: '#MRN-88412',
+            bloodType: 'A Positive (A+)',
+            diagnoses: [
+              '<strong>Alzheimer\'s Disease (Early-to-Moderate)</strong> - MoCA 19/30; routine companion cognitive orientation enabled.',
+              '<strong>Paroxysmal Atrial Fibrillation</strong> - Anticoagulated with Apixaban 5 mg BID.',
+              '<strong>Bilateral Knee Osteoarthritis</strong> - Moderate mobility impairment, uses walker for ambulation.',
+              '<strong>Hypothyroidism</strong> - Stable on Levothyroxine 75 mcg daily.'
+            ],
+            allergies: [
+              '⚠️ <strong>Aspirin / NSAIDs:</strong> Severe peptic ulcer disease history.',
+              '⚠️ <strong>Codeine:</strong> Nausea and severe dizziness.'
+            ],
+            vitalsBaseline: {
+              restingHr: '76 bpm (irregularly irregular)',
+              spo2: '96%',
+              temp: '98.6°F',
+              bp: '134/84 mmHg',
+              rr: '18/min',
+              codeStatus: 'DNR / DNI (Advance Directive verified on state registry)'
+            }
+          },
+          medHistory: {
+            activeCount: 6,
+            adherence30Day: '98.5%',
+            regimenHtml: `
+              <div><strong>Donepezil 10 mg</strong> · Oral, 8:00 AM daily (Cognitive support) · <em>Started Feb 2024 · 99% adherence</em></div>
+              <div><strong>Apixaban (Eliquis) 5 mg</strong> · Oral, 8:00 AM & 8:00 PM BID (Stroke prevention/AFib) · <em>98% adherence</em></div>
+              <div><strong>Levothyroxine 75 mcg</strong> · Oral, 7:00 AM fasting (Thyroid replacement) · <em>98% adherence</em></div>
+              <div><strong>Memantine 10 mg</strong> · Oral, 1:00 PM daily (Neuroprotection) · <em>Started Aug 2024 · 97% adherence</em></div>
+              <div><strong>Acetaminophen ER 650 mg</strong> · Oral, 2:00 PM daily (Joint pain) · <em>As scheduled · 96% adherence</em></div>
+              <div><strong>Colecalciferol 800 IU</strong> · Oral, 7:00 PM daily (Bone health) · <em>95% adherence</em></div>
+            `,
+            discontinuedHtml: '<strong>Ibuprofen 400 mg</strong> - Discontinued 2023 due to GI bleed. Replaced with Acetaminophen ER.',
+            pharmacyHtml: '<strong>CVS Pharmacy #1204</strong> · 450 Oakridge Blvd<br>Phone: (555) 321-4567 · Automated Blister Pack Packaging: Enrolled'
+          },
+          medsSchedule: [
+            { id: 'don', p: 'Morning', name: 'Donepezil', dose: '10 mg', time: '8:00 AM', h: 8, done: true },
+            { id: 'apx_m', p: 'Morning', name: 'Apixaban (Eliquis)', dose: '5 mg', time: '8:00 AM', h: 8, done: true },
+            { id: 'levo', p: 'Morning', name: 'Levothyroxine', dose: '75 mcg', time: '8:00 AM', h: 8, done: true },
+            { id: 'mem', p: 'Afternoon', name: 'Memantine', dose: '10 mg', time: '1:00 PM', h: 13, done: true },
+            { id: 'tyl', p: 'Afternoon', name: 'Acetaminophen ER', dose: '650 mg', time: '2:00 PM', h: 14, done: false },
+            { id: 'apx_e', p: 'Evening', name: 'Apixaban (Eliquis)', dose: '5 mg', time: '8:00 PM', h: 20, done: false }
+          ],
+          guardian: {
+            caregiver: {
+              name: 'David Vance',
+              role: 'Son & Primary Live-In Caregiver',
+              status: 'Active In-Home',
+              phone: '+1 (555) 432-8765',
+              email: 'david.vance@example.org',
+              coverage: '24/7 Primary family coverage with weekend respite care'
+            },
+            proxy: {
+              name: 'Sarah Vance',
+              role: 'Daughter-in-Law · Alternate Proxy',
+              badge: 'Family Alternate',
+              phone: '+1 (555) 432-8766',
+              email: 'sarah.vance@example.org',
+              address: '114 Whispering Pines Way, Springfield'
+            },
+            escalation: [
+              'Companion voice prompt to Eleanor: "Eleanor, David has been notified, please remain seated."',
+              'Direct high-priority push notification sent to David Vance\'s smartphone.',
+              'Emergency protocol dispatch if no movement or response within 90 seconds.'
+            ]
+          }
+        },
+        robert: {
+          fileName: 'Clinical_Scan_Robert_Chen_Cardiology_Intake.pdf',
+          fileSize: '2.4 MB',
+          fileType: 'PDF Document',
+          patient: {
+            name: 'Robert Chen',
+            age: 75,
+            gender: 'Male',
+            id: 'P-3051',
+            mrn: '#MRN-77319',
+            bloodType: 'B Positive (B+)',
+            diagnoses: [
+              '<strong>Parkinson\'s Disease (Stage 2)</strong> - Resting tremor, bradykinesia, mild gait instability.',
+              '<strong>Coronary Artery Disease (CAD)</strong> - Status post DES stent to LAD (2023).',
+              '<strong>Neurogenic Orthostatic Hypotension</strong> - Monitored for postural blood pressure drops.',
+              '<strong>Dyslipidemia</strong> - Controlled with high-intensity statin therapy.'
+            ],
+            allergies: [
+              '⚠️ <strong>Radiocontrast Dye:</strong> History of severe anaphylactoid reaction.',
+              '⚠️ <strong>Ciprofloxacin:</strong> Tendinitis and Achilles pain.'
+            ],
+            vitalsBaseline: {
+              restingHr: '68 bpm',
+              spo2: '98%',
+              temp: '98.2°F',
+              bp: '118/74 mmHg (standing 104/66)',
+              rr: '15/min',
+              codeStatus: 'Full Code · Medical Orders for Life-Sustaining Treatment (MOLST) on file'
+            }
+          },
+          medHistory: {
+            activeCount: 5,
+            adherence30Day: '96.8%',
+            regimenHtml: `
+              <div><strong>Carbidopa/Levodopa 25/100 mg</strong> · Oral, 7:30 AM, 1:30 PM, 7:30 PM (Parkinson motor control) · <em>98% adherence</em></div>
+              <div><strong>Metoprolol Succinate 50 mg</strong> · Oral, 8:00 AM daily (Post-stent cardioprotection) · <em>97% adherence</em></div>
+              <div><strong>Atorvastatin 40 mg</strong> · Oral, 8:00 PM daily (CAD secondary prevention) · <em>96% adherence</em></div>
+              <div><strong>Fludrocortisone 0.1 mg</strong> · Oral, 8:00 AM daily (Orthostatic blood pressure stabilization) · <em>95% adherence</em></div>
+              <div><strong>CoQ10 200 mg</strong> · Oral, 1:00 PM daily (Mitochondrial support) · <em>94% adherence</em></div>
+            `,
+            discontinuedHtml: '<strong>Pramipexole 0.5 mg</strong> - Discontinued June 2024 due to visual hallucinations. Switched to Levodopa monotherapy.',
+            pharmacyHtml: '<strong>Baymax Community Pharmacy</strong> · 880 Healthcare Plaza<br>Phone: (555) 678-9012 · Specialty Neuro Sync: Active'
+          },
+          medsSchedule: [
+            { id: 'cdl_m', p: 'Morning', name: 'Carbidopa/Levodopa', dose: '25/100 mg', time: '7:30 AM', h: 7.5, done: true },
+            { id: 'meto', p: 'Morning', name: 'Metoprolol Succinate', dose: '50 mg', time: '8:00 AM', h: 8, done: true },
+            { id: 'flud', p: 'Morning', name: 'Fludrocortisone', dose: '0.1 mg', time: '8:00 AM', h: 8, done: true },
+            { id: 'cdl_a', p: 'Afternoon', name: 'Carbidopa/Levodopa', dose: '25/100 mg', time: '1:30 PM', h: 13.5, done: true },
+            { id: 'coq', p: 'Afternoon', name: 'CoQ10', dose: '200 mg', time: '1:00 PM', h: 13, done: true },
+            { id: 'cdl_e', p: 'Evening', name: 'Carbidopa/Levodopa', dose: '25/100 mg', time: '7:30 PM', h: 19.5, done: false },
+            { id: 'ator', p: 'Evening', name: 'Atorvastatin', dose: '40 mg', time: '8:00 PM', h: 20, done: false }
+          ],
+          guardian: {
+            caregiver: {
+              name: 'Anita Chen',
+              role: 'Spouse & Primary Home Caregiver',
+              status: 'Active On-Site',
+              phone: '+1 (555) 987-6543',
+              email: 'anita.chen@homecare.net',
+              coverage: '24/7 Primary family coverage · Trained on fall recovery protocols'
+            },
+            proxy: {
+              name: 'Dr. Marcus Chen',
+              role: 'Son · Emergency Medicine Physician & Healthcare Proxy',
+              badge: 'Physician Proxy',
+              phone: '+1 (555) 876-5433',
+              email: 'marcus.chen@hospital.med',
+              address: '422 University Heights, Springfield'
+            },
+            escalation: [
+              'Companion initiates gentle audio prompt to Robert Chen while alerting Anita Chen.',
+              'Wristband haptic buzz and smartphone notification to Anita Chen.',
+              'Priority clinical alert to Dr. Marcus Chen if no check-in confirmed.'
+            ]
+          }
+        },
+        margaret_update: {
+          fileName: 'Discharge_Summary_Margaret_Iyer_CarePlan.pdf',
+          fileSize: '1.2 MB',
+          fileType: 'PDF Document',
+          patient: {
+            name: 'Margaret Iyer',
+            age: 78,
+            gender: 'Female',
+            id: 'P-1042',
+            mrn: '#MRN-94820',
+            bloodType: 'O Positive (O+)',
+            diagnoses: [
+              '<strong>Mild Cognitive Impairment (MCI)</strong> - Diagnosed 2024; active monitoring via conversational companion.',
+              '<strong>Essential Hypertension (Stage 1)</strong> - Dosage updated to Amlodipine 10 mg daily.',
+              '<strong>High Fall Risk</strong> - Morse Fall Scale score 65; smart wristband continuous accelerometer enabled.',
+              '<strong>Osteopenia</strong> - Lumbar spine & hip T-score -2.1; Calcium + Vit D therapy.'
+            ],
+            allergies: [
+              '⚠️ <strong>Penicillin:</strong> Severe cutaneous rash and urticaria.',
+              '⚠️ <strong>Sulfa Drugs:</strong> Moderate gastrointestinal distress.'
+            ],
+            vitalsBaseline: {
+              restingHr: '70 bpm',
+              spo2: '98%',
+              temp: '98.4°F',
+              bp: '122/78 mmHg',
+              rr: '16/min',
+              codeStatus: 'Full Code (Healthcare Proxy on file with Sunita Nair & Priya Iyer)'
+            }
+          },
+          medHistory: {
+            activeCount: 6,
+            adherence30Day: '97.2%',
+            regimenHtml: `
+              <div><strong>Metformin 850 mg</strong> · Oral, 8:00 AM daily (Type 2 Diabetes prevention) · <em>Optimized dosage · 98% adherence</em></div>
+              <div><strong>Amlodipine 10 mg</strong> · Oral, 8:00 AM daily (Hypertension control) · <em>Updated from 5 mg · 97% adherence</em></div>
+              <div><strong>Vitamin D3 1000 IU</strong> · Oral, 1:00 PM daily (Bone density) · <em>Started Nov 2025 · 92% adherence</em></div>
+              <div><strong>Calcium 500 mg</strong> · Oral, 2:00 PM daily (Osteopenia) · <em>Started Nov 2025 · 90% adherence</em></div>
+              <div><strong>Atorvastatin 20 mg</strong> · Oral, 7:00 PM daily (Lipid profile) · <em>Started Aug 2024 · 95% adherence</em></div>
+              <div><strong>Melatonin 3 mg</strong> · Oral, 9:30 PM PRN (Sleep cycle) · <em>As needed</em></div>
+            `,
+            discontinuedHtml: '<strong>Lisinopril 10 mg</strong> - Discontinued Oct 2025 due to medication-induced dry cough. Successfully transitioned to Amlodipine.',
+            pharmacyHtml: '<strong>Walgreens Pharmacy #4829</strong> · 1024 Medical Plaza Way<br>Phone: (555) 789-0123 · Rx Automated Refill Protocol: Active'
+          },
+          medsSchedule: [
+            { id: 'met', p: 'Morning', name: 'Metformin', dose: '850 mg', time: '8:00 AM', h: 8, done: true },
+            { id: 'aml', p: 'Morning', name: 'Amlodipine', dose: '10 mg', time: '8:00 AM', h: 8, done: true },
+            { id: 'vit', p: 'Afternoon', name: 'Vitamin D3', dose: '1000 IU', time: '1:00 PM', h: 13, done: true },
+            { id: 'calc', p: 'Afternoon', name: 'Calcium', dose: '500 mg', time: '2:00 PM', h: 14, done: false },
+            { id: 'ato', p: 'Evening', name: 'Atorvastatin', dose: '20 mg', time: '7:00 PM', h: 19, done: false },
+            { id: 'mel', p: 'Night', name: 'Melatonin', dose: '3 mg', time: '9:30 PM', h: 21.5, done: false }
+          ],
+          guardian: {
+            caregiver: {
+              name: 'Sunita Nair',
+              role: 'Certified Nursing Assistant & Full-time Caregiver',
+              status: 'Active On-Site',
+              phone: '+1 (555) 234-5678',
+              email: 'sunita.nair@baymaxcare.demo',
+              coverage: 'Daily 8:00 AM - 8:00 PM (equipped with active companion receiver)'
+            },
+            proxy: {
+              name: 'Priya Iyer',
+              role: 'Daughter · Legal Medical Decision Maker',
+              badge: 'Family Proxy',
+              phone: '+1 (555) 876-5432',
+              email: 'priya.iyer@example.com',
+              address: '742 Evergreen Terrace, Apt 4B, Springfield'
+            },
+            escalation: [
+              'Baymax companion prompts Margaret Iyer via smart audio check-in for 30s.',
+              'Direct alert pushed to Sunita Nair\'s phone and wrist device.',
+              'If unacknowledged within 2 minutes, emergency dispatch is notified and priority SMS sent to Priya Iyer.'
+            ]
+          }
+        }
+      };
+
+      let currentExtractedData = null;
+
+      function renderUploadDocContent() {
+        return `
+          <div class="doc-upload-container">
+            <p style="font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.5">
+              Upload any medical record, hospital discharge summary, intake sheet, or photo/scan. BaymaxCare automatically extracts patient demographics, medication history, and caregiver contacts to auto-fill this dashboard.
+            </p>
+
+            <div class="doc-dropzone" id="docDropzone">
+              <input type="file" id="docFileInput" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.txt" />
+              <div style="width:44px;height:44px;margin:0 auto 8px;border-radius:12px;background:var(--teal-soft);color:var(--teal);display:flex;align-items:center;justify-content:center">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <div style="font-weight:600;font-size:13.5px;color:var(--fg)">Drag & drop files here, or <span style="color:var(--teal);text-decoration:underline">browse</span></div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:4px">Accepts medical PDF documents, Word files, and high-res mobile photos</div>
+              <div class="doc-formats-pills">
+                <span class="doc-format-pill">📄 PDF Document</span>
+                <span class="doc-format-pill">📝 Word DOC / DOCX</span>
+                <span class="doc-format-pill">🖼️ Photos & Scans (JPG/PNG)</span>
+                <span class="doc-format-pill">📑 Clinical Text (.txt)</span>
+              </div>
+            </div>
+
+            <div class="upload-samples-row" id="uploadSamplesRow">
+              <div style="font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">
+                Or test auto-fill instantly with sample clinical records:
+              </div>
+              <button type="button" class="sample-btn" data-sample="eleanor">
+                <div>
+                  <div style="font-weight:600;color:var(--fg)">📋 Eleanor Vance · Geriatric & Memory Intake (82y, F)</div>
+                  <div style="font-size:11px;color:var(--muted)">Alzheimer's, AFib · 6 Meds (Eliquis, Donepezil) · Caregiver: David Vance</div>
+                </div>
+                <span style="color:var(--teal);font-weight:600;font-size:11.5px">Load & Preview →</span>
+              </button>
+              <button type="button" class="sample-btn" data-sample="robert">
+                <div>
+                  <div style="font-weight:600;color:var(--fg)">🏥 Robert Chen · Cardiology & Movement Disorder (75y, M)</div>
+                  <div style="font-size:11px;color:var(--muted)">Parkinson's, CAD · 7 Meds (Levodopa, Metoprolol) · Caregiver: Anita Chen</div>
+                </div>
+                <span style="color:var(--teal);font-weight:600;font-size:11.5px">Load & Preview →</span>
+              </button>
+              <button type="button" class="sample-btn" data-sample="margaret_update">
+                <div>
+                  <div style="font-weight:600;color:var(--fg)">📄 Margaret Iyer · Hospital Discharge Summary (78y, F)</div>
+                  <div style="font-size:11px;color:var(--muted)">Care plan update · Optimized dosages (Amlodipine 10mg, Metformin 850mg)</div>
+                </div>
+                <span style="color:var(--teal);font-weight:600;font-size:11.5px">Load & Preview →</span>
+              </button>
+            </div>
+
+            <div class="upload-progress-box" id="uploadProgressBox" style="display:none">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="font-weight:600;font-size:13px;color:var(--fg)" id="uploadFileName">Analyzing Document...</div>
+                <span class="badge ok" id="uploadStatusBadge">Scanning</span>
+              </div>
+              <div class="upload-progress-bar">
+                <i id="uploadProgressBarFill"></i>
+              </div>
+              <div style="font-size:11.5px;color:var(--muted)" id="uploadStepText">Initializing OCR parser & entity extractor...</div>
+            </div>
+
+            <div id="uploadPreviewSection" style="display:none">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px">
+                <h3 style="margin:0;font-size:14px;color:var(--teal);font-weight:600">Extracted Clinical Entities Ready</h3>
+                <span class="badge ok">✓ 3 Categories Parsed</span>
+              </div>
+
+              <div class="extracted-section-card">
+                <div class="extracted-header">
+                  <span>👤 1. Patient Demographics & Diagnoses</span>
+                  <span class="extracted-tag">Auto-Detected</span>
+                </div>
+                <div id="prevPatientBody" style="font-size:12px;color:var(--fg);line-height:1.5"></div>
+              </div>
+
+              <div class="extracted-section-card">
+                <div class="extracted-header">
+                  <span>💊 2. Active Medications & Schedule</span>
+                  <span class="extracted-tag">Auto-Detected</span>
+                </div>
+                <div id="prevMedsBody" style="font-size:12px;color:var(--fg);line-height:1.5"></div>
+                <div style="font-size:11px;color:var(--teal);margin-top:6px;font-weight:500">
+                  ⚡ Will automatically sync into the live Medication Schedule on your dashboard.
+                </div>
+              </div>
+
+              <div class="extracted-section-card">
+                <div class="extracted-header">
+                  <span>🛡️ 3. Caregiver & Emergency Contacts</span>
+                  <span class="extracted-tag">Auto-Detected</span>
+                </div>
+                <div id="prevGuardianBody" style="font-size:12px;color:var(--fg);line-height:1.5"></div>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px">
+                <button type="button" class="btn sm" id="btnUploadReset">Choose Different File</button>
+                <button type="button" class="btn sm primary" id="btnApplyAutoFill" style="display:inline-flex;align-items:center;gap:6px">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Apply & Auto-Fill Records
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function attachUploadEvents() {
+        const dropzone = $('#docDropzone');
+        const fileInput = $('#docFileInput');
+        const progressBox = $('#uploadProgressBox');
+        const progressBarFill = $('#uploadProgressBarFill');
+        const stepText = $('#uploadStepText');
+        const fileNameEl = $('#uploadFileName');
+        const previewSection = $('#uploadPreviewSection');
+        const samplesRow = $('#uploadSamplesRow');
+
+        function startScan(data) {
+          currentExtractedData = data;
+          dropzone.style.display = 'none';
+          if (samplesRow) samplesRow.style.display = 'none';
+          progressBox.style.display = 'block';
+          previewSection.style.display = 'none';
+          fileNameEl.textContent = `Analyzing ${data.fileName} (${data.fileSize || 'Clinical File'})`;
+          progressBarFill.style.width = '0%';
+
+          const steps = [
+            { pct: '30%', text: 'Scanning document layout & OCR text layers...' },
+            { pct: '65%', text: 'Extracting patient demographics & ICD-10 clinical diagnoses...' },
+            { pct: '88%', text: 'Parsing active prescription regimens & schedule timings...' },
+            { pct: '100%', text: 'Extraction complete! Ready to review and auto-fill.' }
+          ];
+
+          let stepIdx = 0;
+          const interval = setInterval(() => {
+            if (stepIdx < steps.length) {
+              progressBarFill.style.width = steps[stepIdx].pct;
+              stepText.textContent = steps[stepIdx].text;
+              stepIdx++;
+            } else {
+              clearInterval(interval);
+              setTimeout(() => {
+                showPreview(data);
+              }, 250);
+            }
+          }, 260);
+        }
+
+        function showPreview(data) {
+          progressBox.style.display = 'none';
+          previewSection.style.display = 'block';
+
+          // 1. Patient body preview
+          $('#prevPatientBody').innerHTML = `
+            <strong>${esc(data.patient.name)}</strong> · ${data.patient.age} yrs · ${esc(data.patient.gender)} · ID: ${esc(data.patient.id)} (${esc(data.patient.bloodType)})<br>
+            <span style="color:var(--muted)">Diagnoses:</span> ${data.patient.diagnoses.map(d => d.replace(/<\/?[^>]+(>|$)/g, "")).join('; ')}<br>
+            <span style="color:var(--muted)">Baseline:</span> HR ${esc(data.patient.vitalsBaseline.restingHr)}, BP ${esc(data.patient.vitalsBaseline.bp)}, SpO2 ${esc(data.patient.vitalsBaseline.spo2)}
+          `;
+
+          // 2. Meds body preview
+          const medNames = (data.medsSchedule || []).map(m => `<strong>${esc(m.name)} ${esc(m.dose)}</strong> (${esc(m.time)})`).join(' · ');
+          $('#prevMedsBody').innerHTML = `
+            ${medNames || 'Active medications detected and parsed.'}<br>
+            <span style="color:var(--muted)">Historical Adherence:</span> ${esc(data.medHistory.adherence30Day)} (${data.medHistory.activeCount} active prescriptions)
+          `;
+
+          // 3. Guardian body preview
+          $('#prevGuardianBody').innerHTML = `
+            <strong>Primary Caregiver:</strong> ${esc(data.guardian.caregiver.name)} (${esc(data.guardian.caregiver.role)}) · 📞 ${esc(data.guardian.caregiver.phone)}<br>
+            <strong>Healthcare Proxy:</strong> ${esc(data.guardian.proxy.name)} (${esc(data.guardian.proxy.role)}) · 📞 ${esc(data.guardian.proxy.phone)}
+          `;
+
+          // Apply button
+          $('#btnApplyAutoFill').onclick = () => {
+            applyExtractedData(currentExtractedData);
+          };
+
+          // Reset button
+          $('#btnUploadReset').onclick = () => {
+            dropzone.style.display = 'block';
+            if (samplesRow) samplesRow.style.display = 'block';
+            previewSection.style.display = 'none';
+            fileInput.value = '';
+          };
+        }
+
+        // Dropzone interactions
+        if (dropzone && fileInput) {
+          dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('is-dragover'); });
+          dropzone.addEventListener('dragleave', () => dropzone.classList.remove('is-dragover'));
+          dropzone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropzone.classList.remove('is-dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+              handleCustomFile(e.dataTransfer.files[0]);
+            }
+          });
+          fileInput.addEventListener('change', () => {
+            if (fileInput.files && fileInput.files[0]) {
+              handleCustomFile(fileInput.files[0]);
+            }
+          });
+        }
+
+        // Handle uploaded custom file
+        function handleCustomFile(file) {
+          const nameClean = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+          const customData = {
+            fileName: file.name,
+            fileSize: (file.size / 1024).toFixed(1) + ' KB',
+            fileType: file.type || 'Clinical Document',
+            patient: {
+              name: nameClean.length > 3 ? nameClean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Margaret Iyer (Imported)',
+              age: 79,
+              gender: 'Female',
+              id: 'P-' + Math.floor(1000 + Math.random() * 9000),
+              mrn: '#MRN-' + Math.floor(10000 + Math.random() * 90000),
+              bloodType: 'O Positive (O+)',
+              diagnoses: [
+                '<strong>Mild Cognitive Impairment (MCI)</strong> - Clinical document review verified.',
+                '<strong>Essential Hypertension (Stage 1)</strong> - Managed with Amlodipine.',
+                '<strong>High Fall Risk</strong> - Sensor & smart companion assisted monitoring.'
+              ],
+              allergies: [
+                '⚠️ <strong>Penicillin:</strong> Severe cutaneous rash and urticaria.'
+              ],
+              vitalsBaseline: {
+                restingHr: '72 bpm',
+                spo2: '98%',
+                temp: '98.4°F',
+                bp: '124/80 mmHg',
+                rr: '16/min',
+                codeStatus: 'Full Code (Verified in imported document)'
+              }
+            },
+            medHistory: {
+              activeCount: 5,
+              adherence30Day: '96.5%',
+              regimenHtml: `
+                <div><strong>Amlodipine 5 mg</strong> · Oral, 8:00 AM daily (Hypertension) · <em>Active</em></div>
+                <div><strong>Metformin 500 mg</strong> · Oral, 8:00 AM daily (Metabolic control) · <em>Active</em></div>
+                <div><strong>Vitamin D3 1000 IU</strong> · Oral, 1:00 PM daily (Bone health) · <em>Active</em></div>
+                <div><strong>Calcium 500 mg</strong> · Oral, 2:00 PM daily (Osteopenia) · <em>Active</em></div>
+                <div><strong>Atorvastatin 20 mg</strong> · Oral, 7:00 PM daily (Lipid profile) · <em>Active</em></div>
+              `,
+              discontinuedHtml: 'Medication transition verified from imported document.',
+              pharmacyHtml: '<strong>Walgreens Pharmacy #4829</strong> · Prescription electronic refill sync active'
+            },
+            medsSchedule: [
+              { id: 'm1', p: 'Morning', name: 'Amlodipine', dose: '5 mg', time: '8:00 AM', h: 8, done: true },
+              { id: 'm2', p: 'Morning', name: 'Metformin', dose: '500 mg', time: '8:00 AM', h: 8, done: true },
+              { id: 'm3', p: 'Afternoon', name: 'Vitamin D3', dose: '1000 IU', time: '1:00 PM', h: 13, done: true },
+              { id: 'm4', p: 'Afternoon', name: 'Calcium', dose: '500 mg', time: '2:00 PM', h: 14, done: false },
+              { id: 'm5', p: 'Evening', name: 'Atorvastatin', dose: '20 mg', time: '7:00 PM', h: 19, done: false }
+            ],
+            guardian: {
+              caregiver: {
+                name: 'Sunita Nair',
+                role: 'Certified Nursing Assistant & Full-time Caregiver',
+                status: 'Active On-Site',
+                phone: '+1 (555) 234-5678',
+                email: 'sunita.nair@baymaxcare.demo',
+                coverage: 'Daily 8:00 AM - 8:00 PM (equipped with active companion receiver)'
+              },
+              proxy: {
+                name: 'Priya Iyer',
+                role: 'Daughter · Legal Medical Decision Maker',
+                badge: 'Family Proxy',
+                phone: '+1 (555) 876-5432',
+                email: 'priya.iyer@example.com',
+                address: '742 Evergreen Terrace, Apt 4B, Springfield'
+              },
+              escalation: [
+                'Baymax companion prompts via smart audio check-in for 30s.',
+                'Direct alert pushed to caregiver device.',
+                'Emergency dispatch notified if unacknowledged within 2 minutes.'
+              ]
+            }
+          };
+
+          // If text file, try to extract real text
+          if (file.name.match(/\.(txt|csv|log)$/i)) {
+            const reader = new FileReader();
+            reader.onload = e => {
+              const text = e.target.result;
+              const nameMatch = text.match(/patient\s*name[:\s]+([^\r\n,]+)/i);
+              if (nameMatch) customData.patient.name = nameMatch[1].trim();
+              const ageMatch = text.match(/age[:\s]+(\d+)/i);
+              if (ageMatch) customData.patient.age = parseInt(ageMatch[1], 10);
+              startScan(customData);
+            };
+            reader.readAsText(file);
+          } else {
+            startScan(customData);
+          }
+        }
+
+        // Sample click handlers
+        $$('.sample-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const sampleKey = btn.dataset.sample;
+            if (SAMPLE_DOCS[sampleKey]) {
+              startScan(SAMPLE_DOCS[sampleKey]);
+            }
+          });
+        });
+      }
+
+      function applyExtractedData(data) {
+        if (!data) return;
+        PATIENT_DATA = JSON.parse(JSON.stringify(data.patient));
+        MED_HISTORY_DATA = JSON.parse(JSON.stringify(data.medHistory));
+        GUARDIAN_DATA = JSON.parse(JSON.stringify(data.guardian));
+
+        // Sync live medication schedule on dashboard
+        if (data.medsSchedule && Array.isArray(data.medsSchedule)) {
+          MEDS = JSON.parse(JSON.stringify(data.medsSchedule));
+          renderMeds();
+        }
+
+        // Update banner and drawer elements
+        updatePatientBanner();
+
+        // Close modal and notify
+        closeInfoModal();
+        toast(`✓ Patient Information, Medication Schedule, and Guardian records auto-filled from ${data.fileName}!`);
+      }
+
+      if ($('#drawerEditPatientBtn')) {
+        $('#drawerEditPatientBtn').addEventListener('click', () => {
+          $('#btnPatientInfo').click();
+        });
+      }
+
+      /* Upload Information / Auto-Fill Trigger */
+      if ($('#btnUploadDoc')) {
+        $('#btnUploadDoc').addEventListener('click', () => {
+          openInfoModal('Upload Patient Records & Auto-Fill', renderUploadDocContent());
+          attachUploadEvents();
+        });
+      }
+
+      /* 1. Patient Information */
+      $('#btnPatientInfo').addEventListener('click', () => {
+        openInfoModal('Patient Information', renderPatientInfoContent());
+      });
+
+      /* 2. Medication History */
+      $('#btnMedHistory').addEventListener('click', () => {
+        openInfoModal('Medication History & Adherence', renderMedHistoryContent());
+      });
+
+      /* 3. Next Appointment State & Handlers */
+      let APPT = {
+        date: '2026-11-18',
+        time: '10:30',
+        title: 'Clinical Follow-up & Vitals Audit',
+        type: 'In-Clinic Consultation',
+        duration: '45 min',
+        physician: 'Dr. Sarah Jenkins, MD',
+        dept: 'Cardiology & Geriatrics',
+        status: 'Confirmed · Reminder Sent',
+        location: 'BaymaxCare Ambulatory Clinic · Suite 304, Building B'
+      };
+
+      function formatApptInfo() {
+        const parts = APPT.date.split('-');
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+        const dateObj = new Date(y, m - 1, d);
+        const monthShort = isNaN(dateObj) ? 'NOV' : dateObj.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+        const monthTitle = isNaN(dateObj) ? 'Nov' : dateObj.toLocaleDateString('en-US', { month: 'short' });
+        const dayNum = isNaN(dateObj) ? '18' : dateObj.getDate();
+        const dayName = isNaN(dateObj) ? 'Wednesday' : dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+        const timeFormatted = formatTime12(APPT.time) || APPT.time;
+        return {
+          monthShort,
+          dayNum,
+          formattedDateTime: `${dayName}, ${monthTitle} ${dayNum}, ${y} · ${timeFormatted} (${APPT.duration})`,
+          shortSummary: `${monthTitle} ${dayNum}, ${y} · ${timeFormatted} with ${APPT.physician}`
+        };
+      }
+
+      function updateApptViews() {
+        const info = formatApptInfo();
+        if ($('#apptDrawerSub')) $('#apptDrawerSub').textContent = info.shortSummary;
+      }
+
+      function renderApptContent() {
+        const info = formatApptInfo();
+        return `
+          <div class="info-list-card" id="apptBannerCard" style="background:var(--teal-soft);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent)">
+            <div class="info-list-title">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div id="apptMonthBadge" style="width:42px;height:42px;border-radius:9px;background:var(--teal);color:var(--on-teal);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">
+                  <span id="apptMonthTxt" style="font-size:9.5px;text-transform:uppercase">${info.monthShort}</span>
+                  <span id="apptDayTxt" style="font-size:15px;line-height:1">${info.dayNum}</span>
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:13.5px;color:var(--teal)" id="apptTitleTxt">${esc(APPT.title)}</div>
+                  <div style="font-size:11.5px;color:var(--fg);opacity:.85" id="apptDateTimeTxt">${info.formattedDateTime}</div>
+                </div>
+              </div>
+              <button class="box-edit-btn" id="apptBannerEditBtn" type="button" title="Open Calendar to set date/time" aria-label="Set Date & Time">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+          </div>
+
+          <!-- Interactive Calendar & Time Picker Box -->
+          <div class="appt-picker-box" id="apptPickerCard">
+            <div class="info-list-title" style="margin-bottom:0">
+              <span class="appt-picker-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Set Next Appointment Date & Time
+              </span>
+              <button class="box-edit-btn" type="button" title="Edit Calendar Settings" aria-label="Edit Calendar Settings">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            
+            <div class="appt-picker-grid">
+              <div class="appt-picker-field">
+                <label for="apptDateInput">
+                  <span>📅 Calendar Date</span>
+                </label>
+                <div class="appt-input-wrap">
+                  <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <input type="date" id="apptDateInput" value="${APPT.date}" required>
+                </div>
+              </div>
+
+              <div class="appt-picker-field">
+                <label for="apptTimeInput">
+                  <span>⏰ Appointment Time</span>
+                </label>
+                <div class="appt-input-wrap">
+                  <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  <input type="time" id="apptTimeInput" value="${APPT.time}" required>
+                </div>
+              </div>
+
+              <div class="appt-picker-field">
+                <label for="apptTypeInput">
+                  <span>🩺 Consultation Mode</span>
+                </label>
+                <div class="appt-input-wrap">
+                  <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                  </svg>
+                  <select id="apptTypeInput">
+                    <option value="In-Clinic Consultation" ${APPT.type === 'In-Clinic Consultation' ? 'selected' : ''}>In-Clinic Consultation</option>
+                    <option value="Telehealth Video Consultation" ${APPT.type === 'Telehealth Video Consultation' ? 'selected' : ''}>Telehealth Video Consultation</option>
+                    <option value="In-Home Care Visit" ${APPT.type === 'In-Home Care Visit' ? 'selected' : ''}>In-Home Care Visit</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="appt-picker-field">
+                <label for="apptDurationInput">
+                  <span>⏱️ Duration</span>
+                </label>
+                <div class="appt-input-wrap">
+                  <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 14 10"></polyline>
+                  </svg>
+                  <select id="apptDurationInput">
+                    <option value="30 min" ${APPT.duration === '30 min' ? 'selected' : ''}>30 min</option>
+                    <option value="45 min" ${APPT.duration === '45 min' ? 'selected' : ''}>45 min</option>
+                    <option value="60 min" ${APPT.duration === '60 min' ? 'selected' : ''}>60 min</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="appt-picker-actions">
+              <button class="btn sm primary" id="saveApptBtn" type="button" style="display:inline-flex;align-items:center;gap:6px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Set Next Appointment
+              </button>
+            </div>
+          </div>
+
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <span>Consultation Details</span>
+              <button class="box-edit-btn" type="button" title="Edit Consultation Details" aria-label="Edit Details">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <div class="info-grid" style="margin-bottom:0">
+                <div class="info-cell">
+                  <span class="lbl">Attending Physician</span>
+                  <span class="val" id="dispPhysician">${esc(APPT.physician)}</span>
+                </div>
+                <div class="info-cell">
+                  <span class="lbl">Department</span>
+                  <span class="val">${esc(APPT.dept)}</span>
+                </div>
+                <div class="info-cell">
+                  <span class="lbl">Visit Mode</span>
+                  <span class="val" id="dispType">${esc(APPT.type)}</span>
+                </div>
+                <div class="info-cell">
+                  <span class="lbl">Status</span>
+                  <span class="val" style="color:var(--green)" id="dispStatus">${esc(APPT.status)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <span>Clinical Agenda & Objectives</span>
+              <button class="box-edit-btn" type="button" title="Edit Clinical Agenda" aria-label="Edit Agenda">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <ul style="margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg);line-height:1.6">
+                <li>Review 30-day continuous photoplethysmogram (PPG) and pulse transit time (PTT) metrics.</li>
+                <li>Evaluate fall incident at 10:42 AM (resolved safely via companion check-in).</li>
+                <li>Assess tolerance and dosage of Calcium 500 mg and Amlodipine 5 mg.</li>
+                <li>Conduct caregiver feedback review with Sunita Nair.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="info-list-card">
+            <div class="info-list-title">
+              <span>Location & Logistics</span>
+              <button class="box-edit-btn" type="button" title="Edit Location" aria-label="Edit Location">
+                ${PENCIL_SVG}
+              </button>
+            </div>
+            <div class="editable-content">
+              <p style="margin:4px 0 0;font-size:12px;color:var(--muted)">
+                BaymaxCare Ambulatory Clinic · Suite 304, Building B<br>
+                Wheelchair accessible entrance · Patient escorted by Sunita Nair.
+              </p>
+            </div>
+          </div>
+        `;
+      }
+
+      function attachApptEvents() {
+        const saveBtn = $('#saveApptBtn');
+        if (saveBtn) {
+          saveBtn.addEventListener('click', () => {
+            const dateVal = $('#apptDateInput').value;
+            const timeVal = $('#apptTimeInput').value;
+            const typeVal = $('#apptTypeInput').value;
+            const durVal = $('#apptDurationInput').value;
+            if (!dateVal || !timeVal) {
+              toast('Please select both a valid date and time.');
+              return;
+            }
+            APPT.date = dateVal;
+            APPT.time = timeVal;
+            APPT.type = typeVal;
+            APPT.duration = durVal;
+            const info = formatApptInfo();
+            // Update modal displays
+            $('#apptMonthTxt').textContent = info.monthShort;
+            $('#apptDayTxt').textContent = info.dayNum;
+            $('#apptDateTimeTxt').textContent = info.formattedDateTime;
+            if ($('#dispType')) $('#dispType').textContent = APPT.type;
+            // Update left drawer sub text
+            if ($('#apptDrawerSub')) $('#apptDrawerSub').textContent = info.shortSummary;
+            toast(`Next appointment set for ${info.shortSummary}. Reminders queued.`);
+          });
+        }
+        const bannerEdit = $('#apptBannerEditBtn');
+        if (bannerEdit) {
+          bannerEdit.addEventListener('click', () => {
+            $('#apptDateInput').focus();
+            if (typeof $('#apptDateInput').showPicker === 'function') {
+              $('#apptDateInput').showPicker();
+            }
+          });
+        }
+      }
+
+      /* 3. Next Appointment */
+      $('#btnNextAppt').addEventListener('click', () => {
+        openInfoModal('Next Appointment', renderApptContent());
+        attachApptEvents();
+      });
+
+      /* 4. Guardian Information */
+      $('#btnGuardianInfo').addEventListener('click', () => {
+        openInfoModal('Guardian & Emergency Contacts', renderGuardianInfoContent());
+      });
+
+      /* boot */
+      async function syncSelectedPatient() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code') || sessionStorage.getItem('baymaxcare_patient_code') || sessionStorage.getItem('careloop_patient_code');
+        if (!code) return;
+        try {
+          const res = await fetch(`http://127.0.0.1:8000/api/patient?code=${encodeURIComponent(code)}`);
+          if (res.ok) {
+            const data = await res.json();
+            PATIENT_DATA.name = data.full_name;
+            PATIENT_DATA.age = data.age;
+            PATIENT_DATA.id = data.patient_code;
+            if (data.guardian_name) PATIENT_DATA.guardian_name = data.guardian_name;
+            if (data.guardian_username) PATIENT_DATA.guardian_username = data.guardian_username;
+            if (data.guardian_password) PATIENT_DATA.guardian_password = data.guardian_password;
+            if (data.gender) PATIENT_DATA.gender = data.gender;
+            if (data.blood_group) PATIENT_DATA.bloodType = data.blood_group;
+            if (data.allergies && data.allergies.length) {
+              PATIENT_DATA.allergies = data.allergies.map(a => `⚠️ <strong>${a}</strong>`);
+            }
+            if (data.chronic_conditions && data.chronic_conditions.length) {
+              PATIENT_DATA.diagnoses = data.chronic_conditions.map(c => `<strong>${c}</strong>`);
+            }
+            updatePatientBanner();
+          }
+        } catch (e) {
+          const presets = {
+            'P-1043': {
+              name: 'Robert Chen', age: 74, id: 'P-1043', gender: 'Male', bloodType: 'A+',
+              guardian_name: 'David Chen', guardian_username: 'robert_chen_care', guardian_password: 'Care#Chen742',
+              diagnoses: ['<strong>Heart Failure (HFrEF - NYHA Class II)</strong>', '<strong>Chronic Kidney Disease (Stage 3a)</strong>']
+            },
+            'P-1044': {
+              name: 'Eleanor Vance', age: 81, id: 'P-1044', gender: 'Female', bloodType: 'B+',
+              guardian_name: 'Clara Vance', guardian_username: 'eleanor_vance_care', guardian_password: 'Care#Vance810',
+              diagnoses: ['<strong>Post-op Total Hip Arthroplasty</strong>', '<strong>Mild Cognitive Impairment</strong>']
+            }
+          };
+          if (presets[code]) {
+            Object.assign(PATIENT_DATA, presets[code]);
+            updatePatientBanner();
+          }
+        }
+      }
+      syncSelectedPatient();
+
+      renderMeds(); renderInc(); renderAlert(); renderCam(); renderConn(); renderTx(); renderKB(); renderNext(); updateApptViews();
+      setRole('doctor');
+      const hospital = sessionStorage.getItem('baymaxcare_hospital') || sessionStorage.getItem('careloop_hospital') || 'St. Jude Senior Care Center';
+      const license = sessionStorage.getItem('baymaxcare_license') || sessionStorage.getItem('careloop_license') || 'MD-98421-CA';
+      const specialty = sessionStorage.getItem('baymaxcare_specialty') || sessionStorage.getItem('careloop_specialty') || 'Geriatric Medicine';
+      const parts = [];
+      if (hospital) parts.push(hospital);
+      if (specialty) parts.push(specialty);
+      if (license) parts.push('License: ' + license);
+      if ($('#docDetails')) $('#docDetails').textContent = parts.join(' · ');
+      /* responsive charts resize */
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          drawCharts();
+          drawPPG();
+          renderVitals();
+        }, 80);
+      });
+      if (typeof ResizeObserver !== 'undefined') {
+        const obs = new ResizeObserver(() => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            drawCharts();
+            drawPPG();
+          }, 80);
+        });
+        const act = $('#actChart'), ptt = $('#pttChart'), tmp = $('#tempChart'), ppg = $('#ppg');
+        if (act) obs.observe(act);
+        if (ptt) obs.observe(ptt);
+        if (tmp) obs.observe(tmp);
+        if (ppg) obs.observe(ppg);
+      }
+
+      setInterval(tick, 1000); setInterval(fallLoop, 250); setInterval(ppgTick, 40);
+    })();
+  </script>
+</body>
+
+</html>

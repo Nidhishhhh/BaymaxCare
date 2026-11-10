@@ -1,0 +1,2485 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset=utf8>
+  <meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <style>
+    :root {
+      color-scheme: light;
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px)
+    }
+
+    html {
+      scroll-padding-top: env(safe-area-inset-top, 0px)
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font: 14px -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #fff;
+      color: #000
+    }
+
+    img {
+      max-width: 100%
+    }
+
+    [hidden]:not([hidden=until-found i]) {
+      display: none !important
+    }
+  </style>
+</head>
+
+<body>
+  <title>BaymaxCare Dashboard — Guardian</title>
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=IBM+Plex+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600&display=swap">
+  <style>
+    /* Layout: sticky patient header; live vitals and movement trend on the left; care actions (meds, camera, voice) in a right rail; incident log across the bottom. */
+    :root {
+      --bg: #edf4f3;
+      --surface: #ffffff;
+      --surface-2: #f4f9f8;
+      --line: #d8e5e3;
+      --fg: #13302e;
+      --muted: #587471;
+      --teal: #0b7a7c;
+      --on-teal: #ffffff;
+      --teal-soft: #d6eeed;
+      --mint: #58c28c;
+      --amber: #a86400;
+      --amber-soft: #fcefd2;
+      --red: #bb2d24;
+      --red-soft: #fbe1de;
+      --green: #1b7f52;
+      --green-soft: #dbf2e5;
+      --on-signal: #ffffff;
+      --cam-wall: #cfe3e0;
+      --cam-floor: #b3ccc8;
+      --cam-win: #eaf5fb;
+      --cam-chair: #6b9b97;
+      --cam-ink: #3b6561;
+      --shadow: 0 1px 2px rgba(19, 48, 46, .06), 0 8px 24px rgba(19, 48, 46, .06);
+      --f-display: "Bricolage Grotesque", system-ui, sans-serif;
+      --f-body: "Schibsted Grotesk", system-ui, sans-serif;
+      --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0b1a19;
+        --surface: #122725;
+        --surface-2: #173230;
+        --line: #24423f;
+        --fg: #e2f1ef;
+        --muted: #8db0ac;
+        --teal: #4fc9cb;
+        --on-teal: #04201f;
+        --teal-soft: #15403f;
+        --mint: #6fd8a0;
+        --amber: #f2b34f;
+        --amber-soft: #3b2d11;
+        --red: #ff7f74;
+        --red-soft: #45221f;
+        --green: #5ad79c;
+        --green-soft: #143a29;
+        --on-signal: #1c1305;
+        --cam-wall: #223a38;
+        --cam-floor: #1a2e2c;
+        --cam-win: #2d4a52;
+        --cam-chair: #3f6a66;
+        --cam-ink: #86b5b0;
+        --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+        color-scheme: dark
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0b1a19;
+      --surface: #122725;
+      --surface-2: #566968;
+      --line: #24423f;
+      --fg: #e2f1ef;
+      --muted: #8db0ac;
+      --teal: #4fc9cb;
+      --on-teal: #04201f;
+      --teal-soft: #15403f;
+      --mint: #6fd8a0;
+      --amber: #f2b34f;
+      --amber-soft: #3b2d11;
+      --red: #ff7f74;
+      --red-soft: #45221f;
+      --green: #5ad79c;
+      --green-soft: #143a29;
+      --on-signal: #1c1305;
+      --cam-wall: #223a38;
+      --cam-floor: #1a2e2c;
+      --cam-win: #2d4a52;
+      --cam-chair: #3f6a66;
+      --cam-ink: #86b5b0;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+      color-scheme: dark
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font: 400 14px/1.45 var(--f-body);
+      padding-block: 0 32px
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0 0 auto;
+      height: env(safe-area-inset-top, 0px);
+      z-index: 10;
+      background: var(--surface)
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin-inline: auto;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px))
+    }
+
+    .sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap
+    }
+
+    h1 {
+      font: 600 20px/1.15 var(--f-display);
+      margin: 0
+    }
+
+    h2 {
+      font: 600 16px/1.2 var(--f-display);
+      margin: 0
+    }
+
+    h3 {
+      font: 600 13px/1.2 var(--f-display);
+      margin: 0
+    }
+
+    p {
+      margin: 0
+    }
+
+    .muted {
+      color: var(--muted)
+    }
+
+    /* header */
+    .top {
+      position: sticky;
+      top: env(safe-area-inset-top, 0px);
+      z-index: 9;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line)
+    }
+
+    .top-in {
+      display: flex;
+      align-items: center;
+      gap: 12px 20px;
+      flex-wrap: wrap;
+      padding-block: 12px
+    }
+
+    .who {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1 1 220px
+    }
+
+    .who p {
+      font-size: 12.5px;
+      color: var(--muted)
+    }
+
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--teal-soft);
+      color: var(--teal);
+      font: 600 15px var(--f-display);
+      flex: none
+    }
+
+    .avatar.sm {
+      width: 32px;
+      height: 32px;
+      font-size: 12px
+    }
+
+    .conn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 99px;
+      font: 600 12.5px var(--f-body);
+      background: var(--green-soft);
+      color: var(--green)
+    }
+
+    .conn .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: blink 1.6s infinite
+    }
+
+    .conn[data-s="offline"] {
+      background: var(--amber-soft);
+      color: var(--amber)
+    }
+
+    .conn[data-s="sync"] {
+      background: var(--teal-soft);
+      color: var(--teal)
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: .35
+      }
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .uname {
+      font-weight: 600;
+      font-size: 13px
+    }
+
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font: 600 12px var(--f-display);
+      padding: 5px 11px;
+      border-radius: 20px;
+      white-space: nowrap;
+      letter-spacing: .02em
+    }
+
+    .doctor-badge {
+      background: var(--teal-soft);
+      color: var(--teal);
+      border: 1px solid color-mix(in srgb, var(--teal) 30%, var(--line))
+    }
+
+    .guardian-badge {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border: 1px solid color-mix(in srgb, var(--amber) 30%, var(--line))
+    }
+
+    @media(max-width:700px) {
+      .top {
+        position: static
+      }
+
+      .uname {
+        display: none
+      }
+    }
+
+    /* controls */
+    select,
+    input[type=text] {
+      font: 500 13px var(--f-body);
+      color: var(--fg);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      min-height: 38px
+    }
+
+    .btn {
+      font: 600 13px var(--f-body);
+      border-radius: 10px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      cursor: pointer;
+      min-height: 38px
+    }
+
+    .btn.primary {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: var(--on-teal)
+    }
+
+    .btn.signal {
+      background: var(--fg);
+      border-color: var(--fg);
+      color: var(--bg)
+    }
+
+    .btn[disabled] {
+      opacity: .5;
+      cursor: not-allowed
+    }
+
+    .btn.sm {
+      padding: 6px 10px;
+      min-height: 30px;
+      font-size: 12px
+    }
+
+    .btn:focus-visible,
+    .tog:focus-visible,
+    .seg button:focus-visible,
+    select:focus-visible,
+    input:focus-visible,
+    .chip:focus-visible {
+      outline: 2px solid var(--teal);
+      outline-offset: 2px
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px
+    }
+
+    .chip {
+      font: 600 12px var(--f-body);
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      border-radius: 99px;
+      padding: 6px 10px;
+      cursor: pointer
+    }
+
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 2px;
+      background: var(--surface-2)
+    }
+
+    .seg button {
+      border: 0;
+      background: none;
+      color: var(--muted);
+      font: 600 12px var(--f-body);
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer
+    }
+
+    .seg button[aria-pressed="true"] {
+      background: var(--surface);
+      color: var(--fg);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .14)
+    }
+
+    /* structure */
+    .main {
+      padding-block: 16px 0
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px
+    }
+
+    @media(min-width:1000px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr) 360px
+      }
+    }
+
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      min-width: 0
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px
+    }
+
+    .sim {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      color: var(--muted);
+      font-size: 12.5px
+    }
+
+    .sim b {
+      font: 600 11px var(--f-body);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-right: 4px
+    }
+
+    /* alert */
+    .alert {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 14px 16px;
+      align-items: center;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid;
+      margin-bottom: 16px
+    }
+
+    .alert.verifying {
+      background: var(--amber-soft);
+      border-color: var(--amber)
+    }
+
+    .alert.critical {
+      background: var(--red-soft);
+      border-color: var(--red);
+      animation: alarm 1.4s infinite
+    }
+
+    @keyframes alarm {
+      50% {
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--red) 22%, transparent)
+      }
+    }
+
+    .al-ic {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font: 700 22px var(--f-display);
+      color: var(--on-signal)
+    }
+
+    .verifying .al-ic {
+      background: var(--amber)
+    }
+
+    .critical .al-ic {
+      background: var(--red)
+    }
+
+    .al-p {
+      margin-top: 4px;
+      max-width: 62ch
+    }
+
+    .bar {
+      height: 6px;
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--amber) 22%, transparent);
+      margin-top: 10px;
+      overflow: hidden
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      background: var(--amber);
+      transition: width .25s linear
+    }
+
+    .al-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px
+    }
+
+    .count {
+      font: 600 40px/1 var(--f-display);
+      font-variant-numeric: tabular-nums
+    }
+
+    .contacts {
+      list-style: none;
+      margin: 8px 0 0;
+      padding: 0;
+      display: flex;
+      gap: 6px 16px;
+      flex-wrap: wrap;
+      font-size: 13px
+    }
+
+    .contacts span {
+      color: var(--muted)
+    }
+
+    @media(max-width:700px) {
+      .alert {
+        grid-template-columns: auto minmax(0, 1fr)
+      }
+
+      .al-side {
+        grid-column: 1/-1;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap
+      }
+    }
+
+    /* metric cards */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px
+    }
+
+    @media(min-width:1300px) {
+      .metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr))
+      }
+    }
+
+    .metric {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px
+    }
+
+    .m-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap
+    }
+
+    .m-label {
+      font: 600 11.5px var(--f-body);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted)
+    }
+
+    .m-val {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px
+    }
+
+    .num {
+      font: 600 34px/1 var(--f-display);
+      font-variant-numeric: tabular-nums
+    }
+
+    .unit {
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .m-sub {
+      color: var(--muted);
+      font-size: 12.5px;
+      min-height: 2.9em
+    }
+
+    .m-slot {
+      height: 44px;
+      display: flex;
+      align-items: center
+    }
+
+    .pill {
+      font: 600 11px/1 var(--f-body);
+      padding: 5px 8px;
+      border-radius: 99px;
+      letter-spacing: .02em;
+      white-space: nowrap
+    }
+
+    .pill.ok,
+    .badge.resolved {
+      background: var(--green-soft);
+      color: var(--green)
+    }
+
+    .pill.warn,
+    .badge.pending {
+      background: var(--amber-soft);
+      color: var(--amber)
+    }
+
+    .pill.crit,
+    .badge.critical {
+      background: var(--red-soft);
+      color: var(--red)
+    }
+
+    .stale .num {
+      opacity: .45
+    }
+
+    .stale-note {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      margin-bottom: 12px
+    }
+
+    .spark {
+      position: relative;
+      width: 100%;
+      height: 44px
+    }
+
+    .spark svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible
+    }
+
+    .spark .line {
+      fill: none;
+      stroke: var(--teal);
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+      stroke-linejoin: round
+    }
+
+    .spark .area {
+      fill: var(--teal);
+      opacity: .12
+    }
+
+    .dot-end {
+      position: absolute;
+      right: -4px;
+      width: 9px;
+      height: 9px;
+      margin-top: -4.5px;
+      border-radius: 50%;
+      background: var(--teal);
+      animation: ping var(--beat, .8s) infinite
+    }
+
+    @keyframes ping {
+      0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--teal) 55%, transparent)
+      }
+
+      100% {
+        box-shadow: 0 0 0 10px transparent
+      }
+    }
+
+    .heart {
+      width: 22px;
+      height: 22px;
+      color: var(--teal);
+      flex: none;
+      animation: beat var(--beat, .8s) infinite
+    }
+
+    @keyframes beat {
+
+      0%,
+      100% {
+        transform: scale(1)
+      }
+
+      15% {
+        transform: scale(1.2)
+      }
+
+      30% {
+        transform: scale(1)
+      }
+    }
+
+    .m-ring {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 92px
+    }
+
+    .ring {
+      position: relative;
+      width: 92px;
+      height: 92px
+    }
+
+    .ring svg {
+      width: 100%;
+      height: 100%
+    }
+
+    .ring .trk {
+      fill: none;
+      stroke: var(--teal-soft);
+      stroke-width: 9
+    }
+
+    .ring .prg {
+      fill: none;
+      stroke: var(--teal);
+      stroke-width: 9;
+      stroke-linecap: round;
+      transition: stroke-dasharray .6s
+    }
+
+    .ring.warn .prg {
+      stroke: var(--amber)
+    }
+
+    .ring.crit .prg {
+      stroke: var(--red)
+    }
+
+    .ring-val {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      text-align: center;
+      font: 600 24px var(--f-display);
+      font-variant-numeric: tabular-nums
+    }
+
+    .thermo {
+      flex: none
+    }
+
+    .thermo.ok {
+      color: var(--green)
+    }
+
+    .thermo.warn {
+      color: var(--amber)
+    }
+
+    .thermo.crit {
+      color: var(--red)
+    }
+
+    .scale {
+      position: relative;
+      width: 100%;
+      height: 8px;
+      border-radius: 9px;
+      background: linear-gradient(90deg, var(--mint), var(--amber) 55%, var(--red))
+    }
+
+    .scale i {
+      position: absolute;
+      top: -4px;
+      width: 4px;
+      height: 16px;
+      border-radius: 3px;
+      background: var(--fg);
+      transform: translateX(-2px);
+      transition: left .6s
+    }
+
+    .lung {
+      width: 44px;
+      height: 38px;
+      flex: none;
+      animation: breathe var(--breath, 1.9s) ease-in-out infinite alternate;
+      transform-origin: center
+    }
+
+    .lung path {
+      fill: var(--teal-soft);
+      stroke: var(--teal);
+      stroke-width: 2;
+      stroke-linejoin: round
+    }
+
+    @keyframes breathe {
+      from {
+        transform: scale(.88)
+      }
+
+      to {
+        transform: scale(1.08)
+      }
+    }
+
+    .breath {
+      flex: 1;
+      height: 8px;
+      border-radius: 9px;
+      background: var(--teal-soft);
+      margin-left: 10px;
+      overflow: hidden
+    }
+
+    .breath i {
+      display: block;
+      height: 100%;
+      border-radius: 9px;
+      background: var(--teal);
+      animation: fill var(--breath, 1.9s) ease-in-out infinite alternate
+    }
+
+    @keyframes fill {
+      from {
+        width: 25%
+      }
+
+      to {
+        width: 100%
+      }
+    }
+
+    .chip-unit {
+      margin-left: auto
+    }
+
+    /* charts */
+    .chart {
+      min-width: 0
+    }
+
+    .chart svg {
+      display: block;
+      max-width: 100%;
+      overflow: visible
+    }
+
+    .chart .grid {
+      stroke: var(--line);
+      stroke-width: 1
+    }
+
+    .chart .tick {
+      fill: var(--muted);
+      font: 11px var(--f-mono)
+    }
+
+    .chart .ln {
+      fill: none;
+      stroke: var(--teal);
+      stroke-width: 2.5;
+      stroke-linejoin: round;
+      stroke-linecap: round
+    }
+
+    .chart .ar {
+      fill: var(--teal);
+      opacity: .12
+    }
+
+    .chart .pt {
+      fill: var(--surface);
+      stroke: var(--teal);
+      stroke-width: 2
+    }
+
+    .chart .pt.last {
+      fill: var(--teal)
+    }
+
+    .chart .base {
+      stroke: var(--muted);
+      stroke-dasharray: 4 4
+    }
+
+    .chart .fl-line {
+      stroke: var(--amber);
+      stroke-dasharray: 3 3
+    }
+
+    .chart .fl-warn {
+      fill: var(--amber)
+    }
+
+    .chart .fl-txt {
+      fill: var(--amber);
+      font: 600 11px var(--f-body)
+    }
+
+    .note {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 8px;
+      max-width: 70ch
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+      margin-top: 12px
+    }
+
+    .fact {
+      background: var(--surface-2);
+      border-radius: 12px;
+      padding: 10px 12px
+    }
+
+    .fact b {
+      display: block;
+      font: 600 18px var(--f-display);
+      font-variant-numeric: tabular-nums
+    }
+
+    .fact span {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .clin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+      gap: 12px
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: var(--surface-2);
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px
+    }
+
+    .ph {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap
+    }
+
+    canvas#ppg {
+      width: 100%;
+      height: 150px;
+      display: block
+    }
+
+    .kb {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font: 12px/1.45 var(--f-mono)
+    }
+
+    .kb li {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px
+    }
+
+    .kbt {
+      display: inline-block;
+      font: 600 10px var(--f-body);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      background: var(--teal-soft);
+      color: var(--teal);
+      border-radius: 99px;
+      padding: 2px 6px;
+      margin-right: 6px
+    }
+
+    /* medication */
+    .prog {
+      height: 6px;
+      border-radius: 9px;
+      background: var(--teal-soft);
+      overflow: hidden
+    }
+
+    .prog i {
+      display: block;
+      height: 100%;
+      background: var(--teal);
+      transition: width .3s
+    }
+
+    .period {
+      margin-top: 12px
+    }
+
+    .period h3 {
+      color: var(--muted);
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 2px
+    }
+
+    .med {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-top: 1px solid var(--line)
+    }
+
+    .med .t {
+      flex: 1;
+      min-width: 0
+    }
+
+    .med .t b {
+      display: block;
+      font-weight: 600
+    }
+
+    .med .t span {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .tag {
+      font: 600 10.5px var(--f-body);
+      padding: 3px 7px;
+      border-radius: 99px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      margin-left: 6px;
+      text-transform: uppercase;
+      letter-spacing: .04em
+    }
+
+    /* medication status badges (read-only for guardian) */
+    .med-status {
+      font: 600 11.5px/1 var(--f-body);
+      border-radius: 99px;
+      padding: 6px 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .med-status.taken {
+      background: var(--green-soft);
+      color: var(--green);
+      border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+    }
+
+    .med-status.overdue {
+      background: var(--red-soft);
+      color: var(--red);
+      border: 1px solid color-mix(in srgb, var(--red) 30%, transparent);
+    }
+
+    .med-status.pending {
+      background: var(--surface-2);
+      color: var(--muted);
+      border: 1px solid var(--line);
+    }
+
+    /* medication accordion & slide transition */
+    .med-card {
+      transition: box-shadow 0.25s ease;
+    }
+
+    .med-head-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      cursor: pointer;
+      user-select: none;
+      padding: 0;
+      background: none;
+      border: none;
+      color: inherit;
+      text-align: left;
+    }
+
+    .med-head-toggle:focus-visible {
+      outline: 2px solid var(--teal);
+      border-radius: 6px;
+    }
+
+    .med-chevron {
+      width: 20px;
+      height: 20px;
+      color: var(--muted);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .med-card.is-expanded .med-chevron {
+      transform: rotate(180deg);
+      color: var(--teal);
+    }
+
+    .med-head-toggle:hover .med-chevron {
+      color: var(--fg);
+    }
+
+    .med-collapsible {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin-top 0.35s ease;
+      opacity: 0;
+      visibility: hidden;
+      margin-top: 0;
+    }
+
+    .med-collapsible.expanded {
+      grid-template-rows: 1fr;
+      opacity: 1;
+      visibility: visible;
+      margin-top: 10px;
+    }
+
+    .med-collapsible-inner {
+      overflow: hidden;
+      min-height: 0;
+      transform: translateY(-8px);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .med-collapsible.expanded .med-collapsible-inner {
+      transform: translateY(0);
+    }
+
+    #camCard {
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* camera */
+    .cam {
+      position: relative;
+      aspect-ratio: 16/9;
+      max-width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--cam-wall)
+    }
+
+    .cam>svg {
+      width: 100%;
+      height: 100%;
+      display: block
+    }
+
+    .cam.live>svg {
+      animation: drift 6s ease-in-out infinite alternate
+    }
+
+    .cam-feed-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #020617;
+    }
+
+    .cam-error-box {
+      position: absolute;
+      inset: 0;
+      background: #0b1320;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      text-align: center;
+      gap: 9px;
+      z-index: 4;
+    }
+
+    .rpi-badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rpi-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 10px #22c55e;
+      animation: pulseGreen 1.5s infinite;
+    }
+
+    @keyframes pulseGreen {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    @keyframes drift {
+      from {
+        transform: scale(1.02)
+      }
+
+      to {
+        transform: scale(1.07) translate(-1%, -1%)
+      }
+    }
+
+    /* Maximized / Fullscreen Camera Theater Modal */
+    .cam-theater-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 18, 17, 0.94);
+      backdrop-filter: blur(10px);
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      animation: theaterFadeIn .2s ease-out;
+    }
+
+    .cam-theater-modal.open {
+      display: flex;
+    }
+
+    @keyframes theaterFadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .cam-theater-box {
+      width: 100%;
+      max-width: 1200px;
+      height: 84vh;
+      background: #020617;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 18px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .cam-theater-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+      flex-shrink: 0;
+    }
+
+    .cam-theater-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font: 700 16px var(--f-display);
+    }
+
+    .cam-theater-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cam-theater-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font: 600 12.5px var(--f-body);
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s ease;
+    }
+
+    .cam-theater-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .cam-theater-btn.close {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .cam-theater-btn.close:hover {
+      background: rgba(239, 68, 68, 0.4);
+      color: #fff;
+    }
+
+    .cam-theater-body {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .cam-theater-body img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .cam-quick-expand {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(10, 20, 20, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #fff;
+      border-radius: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font: 600 11.5px var(--f-mono);
+      z-index: 5;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all .15s ease;
+    }
+
+    .cam-quick-expand:hover {
+      background: var(--teal);
+      border-color: var(--teal);
+      transform: scale(1.04);
+    }
+
+    .ov {
+      position: absolute;
+      font: 600 11px var(--f-mono);
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: rgba(10, 20, 20, .66);
+      color: #fff
+    }
+
+    .ov.tl {
+      top: 8px;
+      left: 8px
+    }
+
+    .ov.tr {
+      top: 8px;
+      right: 8px
+    }
+
+    .ov.bl {
+      bottom: 8px;
+      left: 8px
+    }
+
+    .shutter {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      gap: 4px;
+      text-align: center;
+      background: #16282a;
+      color: #cfe5e2;
+      padding: 12px
+    }
+
+    .shutter small {
+      opacity: .8
+    }
+
+    /* voice */
+    .tx {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scrollbar-width: thin
+    }
+
+    .line {
+      max-width: 92%;
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 13px
+    }
+
+    .line .who {
+      display: block;
+      font: 600 10.5px var(--f-body);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: 2px
+    }
+
+    .line.agent {
+      background: var(--teal-soft);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px
+    }
+
+    .line.patient {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      align-self: flex-end;
+      border-bottom-right-radius: 4px
+    }
+
+    .line.sys {
+      align-self: stretch;
+      max-width: 100%;
+      border: 1px dashed var(--line);
+      font: 11.5px var(--f-mono);
+      color: var(--muted);
+      padding: 6px 8px;
+      border-radius: 8px
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px
+    }
+
+    .vin {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px
+    }
+
+    .vin input {
+      flex: 1;
+      min-width: 0
+    }
+
+    .vstat {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--green);
+      font-weight: 600
+    }
+
+    .vstat::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor
+    }
+
+    /* incidents */
+    .inc-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .inc {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr) auto;
+      gap: 6px 14px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--surface-2)
+    }
+
+    .inc.pending {
+      background: var(--amber-soft);
+      border-color: color-mix(in srgb, var(--amber) 40%, var(--line))
+    }
+
+    .inc.critical {
+      background: var(--red-soft);
+      border-color: color-mix(in srgb, var(--red) 45%, var(--line))
+    }
+
+    .inc time {
+      font: 500 12px var(--f-mono);
+      color: var(--muted)
+    }
+
+    .inc strong {
+      display: block;
+      font-weight: 600
+    }
+
+    .inc .d {
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .inc-act {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end
+    }
+
+    .badge {
+      font: 600 11px/1 var(--f-body);
+      padding: 6px 9px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      letter-spacing: .05em
+    }
+
+    @media(max-width:700px) {
+      .inc {
+        grid-template-columns: minmax(0, 1fr) auto
+      }
+
+      .inc time {
+        grid-column: 1/-1
+      }
+    }
+
+    /* toasts */
+    #toasts {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+      pointer-events: none;
+      z-index: 20
+    }
+
+    .toast {
+      pointer-events: auto;
+      background: var(--fg);
+      color: var(--bg);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      box-shadow: var(--shadow);
+      max-width: min(520px, 100%)
+    }
+
+    @media(prefers-reduced-motion:reduce) {
+      * {
+        animation: none !important;
+        transition: none !important
+      }
+    }
+  </style>
+
+  <!-- Maximized / Fullscreen Camera Theater Modal -->
+  <div class="cam-theater-modal" id="camTheaterModal" role="dialog" aria-modal="true" aria-label="Maximized Camera Stream">
+    <div class="cam-theater-box" id="camTheaterBox">
+      <div class="cam-theater-head">
+        <div class="cam-theater-title">
+          <span class="rpi-pulse-dot"></span>
+          <span>Baymax Camera · Maximized Live View</span>
+        </div>
+        <div class="cam-theater-actions">
+          <button type="button" class="cam-theater-btn" id="btnTheaterFullscreen" title="Toggle native browser fullscreen">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+            Fullscreen
+          </button>
+          <button type="button" class="cam-theater-btn close" id="btnCloseTheater" title="Minimize back to dashboard (Esc)">
+            ✕ Minimize
+          </button>
+        </div>
+      </div>
+      <div class="cam-theater-body" id="camTheaterBody"></div>
+    </div>
+  </div>
+
+  <header class="top">
+    <div class="wrap top-in">
+      <div class="who">
+        <div class="avatar" id="gPatientAvatar" aria-hidden="true">MI</div>
+        <div>
+          <h1 id="gPatientName">Margaret Iyer</h1>
+          <p id="gPatientSub">78 · ID P-1042 · Live In-Home Monitoring</p>
+        </div>
+      </div>
+      <div class="conn" id="conn" data-s="online" role="status"><span class="dot"></span><span id="connText">Online ·
+          Companion connected</span></div>
+      <div class="profile">
+        <span class="role-badge guardian-badge" aria-label="Current role: Guardian Dashboard">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+            <path
+              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+          Guardian Dashboard
+        </span>
+        <div class="avatar sm" id="userAv" aria-hidden="true">SN</div>
+        <span class="uname" id="uname">Sunita Nair</span>
+        <button class="btn sm" id="logoutBtn" type="button">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap main">
+    <section id="alert" class="alert" hidden role="alert"></section>
+
+
+
+    <div class="layout">
+      <div class="col">
+        <div id="stale" class="stale-note" hidden>Showing the last readings before the gateway lost internet. The
+          wristband and gateway keep recording locally and will sync when the connection returns.</div>
+        <section class="metrics" id="metrics" aria-label="Live vitals">
+          <article class="card metric">
+            <div class="m-head"><span class="m-label">Heart rate</span><span class="pill ok" id="hrPill">Normal</span>
+            </div>
+            <div class="m-val"><svg class="heart" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.6 4.5 6.3 4.5c2.1 0 3.8 1.2 5.7 3.3 1.9-2.1 3.6-3.3 5.7-3.3 3.7 0 5.4 3.9 3.9 7.3C19.5 16.4 12 21 12 21z" />
+              </svg><span class="num" id="hrVal">74</span><span class="unit">bpm</span></div>
+            <div class="spark" aria-hidden="true"><svg viewBox="0 0 120 40" preserveAspectRatio="none">
+                <path class="area" id="hrArea" />
+                <path class="line" id="hrLine" />
+              </svg><i class="dot-end" id="hrDot"></i></div>
+            <p class="m-sub" id="hrSub"></p>
+          </article>
+          <article class="card metric">
+            <div class="m-head"><span class="m-label">SpO2</span><span class="pill ok" id="spoPill">Normal</span></div>
+            <div class="m-ring">
+              <div class="ring" id="spoRing" role="img" aria-label="Blood oxygen"><svg viewBox="0 0 100 100">
+                  <circle class="trk" cx="50" cy="50" r="42" />
+                  <circle class="prg" id="spoArc" cx="50" cy="50" r="42" transform="rotate(-90 50 50)"
+                    stroke-dasharray="0 264" />
+                </svg>
+                <div class="ring-val"><span><span id="spoVal">98</span>%</span></div>
+              </div>
+            </div>
+            <p class="m-sub" id="spoSub"></p>
+          </article>
+          <article class="card metric">
+            <div class="m-head"><span class="m-label">Temperature</span><span class="pill warn" id="tPill">Slightly
+                warm</span></div>
+            <div class="m-val"><svg class="thermo warn" id="thermo" viewBox="0 0 24 24" width="24" height="24"
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M14 14.76V5a2 2 0 0 0-4 0v9.76a4 4 0 1 0 4 0z" />
+              </svg><span class="num" id="tVal">99.2</span><span class="unit" id="tUnit">°F</span><button
+                class="btn sm chip-unit" id="unitBtn" type="button"
+                aria-label="Switch between Fahrenheit and Celsius">°F / °C</button></div>
+            <div class="m-slot">
+              <div class="scale" aria-hidden="true"><i id="tMark"></i></div>
+            </div>
+            <p class="m-sub" id="tSub"></p>
+          </article>
+          <article class="card metric">
+            <div class="m-head"><span class="m-label">Respiration</span><span class="pill ok" id="rrPill">Normal</span>
+            </div>
+            <div class="m-val"><span class="num" id="rrVal">16</span><span class="unit">br/min</span></div>
+            <div class="m-slot" aria-hidden="true"><svg class="lung" viewBox="0 0 48 40">
+                <path d="M22 6v14c0 9-4 14-11 14C6 34 4 30 5 24l3-12c1-4 4-6 8-6h6z" />
+                <path d="M26 6v14c0 9 4 14 11 14 5 0 7-4 6-10l-3-12c-1-4-4-6-8-6h-6z" />
+              </svg>
+              <div class="breath"><i></i></div>
+            </div>
+            <p class="m-sub" id="rrSub"></p>
+          </article>
+        </section>
+
+        <section class="card" aria-labelledby="actH">
+          <div class="card-head">
+            <h2 id="actH">Weekly activity and movement trend</h2>
+            <div class="seg" role="group" aria-label="Range"><button type="button" data-act-mode="week"
+                aria-pressed="true">Week</button><button type="button" data-act-mode="day"
+                aria-pressed="false">Today</button></div>
+          </div>
+          <div class="chart" id="actChart"></div>
+          <p class="note" id="actNote"></p>
+          <div class="facts">
+            <div class="fact"><b>3,420</b><span>Steps today (goal 5,000)</span></div>
+            <div class="fact"><b>46 min</b><span>Active movement</span></div>
+            <div class="fact"><b>Seated 62%</b><span>Posture since 6 AM</span></div>
+            <div class="fact"><b>10:42 AM</b><span>Last fall, resolved</span></div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="incH">
+          <div class="card-head">
+            <h2 id="incH">Incidents and alerts</h2><span class="muted" id="incCount"></span>
+          </div>
+          <ul class="inc-list" id="incList"></ul>
+        </section>
+
+        <section class="card" id="clin" hidden aria-labelledby="clinH">
+          <div class="card-head">
+            <h2 id="clinH">Clinician detail</h2><span class="muted">Simulated high-resolution streams</span>
+          </div>
+          <div class="clin-grid">
+            <div class="panel">
+              <div class="ph">
+                <h3>Photoplethysmogram</h3>
+                <div class="seg" role="group" aria-label="Signal"><button type="button" data-ppg="raw"
+                    aria-pressed="true">Raw</button><button type="button" data-ppg="filt"
+                    aria-pressed="false">Filtered</button></div>
+              </div>
+              <canvas id="ppg" aria-label="Live PPG waveform"></canvas>
+            </div>
+            <div class="panel">
+              <h3>Pulse transit variation (ms)</h3>
+              <div class="chart" id="pttChart"></div>
+            </div>
+            <div class="panel">
+              <h3>Hourly temperature shift</h3>
+              <div class="chart" id="tempChart"></div>
+            </div>
+            <div class="panel">
+              <div class="ph">
+                <h3>Companion knowledge base</h3><button class="btn sm" id="kbPush" type="button">Push summary
+                  now</button>
+              </div>
+              <p class="note" style="margin:0" id="kbNext"></p>
+              <ul class="kb" id="kbList"></ul>
+              <p class="note" style="margin:0" id="kbMeta"></p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="col" aria-label="Care actions">
+        <section class="card med-card" id="medCard" aria-labelledby="medH">
+          <button class="med-head-toggle" id="medToggleBtn" type="button" aria-expanded="false" aria-controls="medCollapse" title="Click to expand/collapse medications">
+            <h2 id="medH" style="margin:0;font-size:16px;font-weight:600">Medication schedule</h2>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="muted" id="medCount" style="font-size:13px"></span>
+              <svg class="med-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+          </button>
+          <div class="prog" aria-hidden="true" style="margin-top:10px"><i id="medBar"></i></div>
+          <div class="med-collapsible" id="medCollapse">
+            <div class="med-collapsible-inner">
+              <div id="medList"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="camCard" aria-labelledby="camH">
+          <div class="card-head">
+            <h2 id="camH">Baymax Camera</h2>
+            <div id="camStatus" class="cam-status" role="status">Standby</div>
+          </div>
+          <div class="cam" id="camView"></div>
+          <div class="btn-row">
+            <button class="btn primary" id="btnLive" type="button">Request live view</button>
+            <button class="btn" id="btnMaximizeCam" type="button" title="Expand live camera view to large theater screen">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+              </svg>
+              Maximize Screen
+            </button>
+            <button class="btn" id="btnCheck" type="button">Ask companion to check in</button>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="voiceH">
+          <div class="card-head">
+            <h2 id="voiceH">Voice companion</h2><span class="vstat">Ready</span>
+          </div>
+          <ul class="tx" id="tx" role="log" aria-live="polite"></ul>
+          <div class="chips" id="chips">
+            <button class="chip" type="button">I feel dizzy</button>
+            <button class="chip" type="button">How is my temperature?</button>
+            <button class="chip" type="button">Did I take my medicines?</button>
+            <button class="chip" type="button">I'm fine</button>
+          </div>
+          <form class="vin" id="vform">
+            <label class="sr" for="vtext">What the patient says</label>
+            <input type="text" id="vtext" placeholder="Type what Margaret says" autocomplete="off">
+            <button class="btn primary" type="submit">Send</button>
+          </form>
+          <p class="note">Prototype replies are scripted from live readings. Production mounts the ElevenLabs
+            conversation widget here.</p>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <div id="toasts" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+      const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&', '<': '<', '>': '>', '"': '"' }[c]));
+      const fmtTime = d => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const fmtDay = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const stamp = d => fmtDay(d) + ' · ' + fmtTime(d);
+      const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+      const mean = a => a.reduce((x, y) => x + y, 0) / (a.length || 1);
+      const root = document.documentElement;
+
+      const ROLES = {
+        guardian: { label: 'Guardian', user: 'Sunita Nair', init: 'SN', resolve: true, clin: false },
+        doctor: { label: 'Doctor', user: 'Dr. Sarah Jenkins, MD', init: 'SJ', resolve: true, clin: true }
+      };
+      const S = {
+        role: 'guardian', unit: 'F', t: 0, hr: 74, spo2: 97.6, temp: 99.2, rr: 16, boost: 0, state: 'normal', deadline: 0, fallAt: null, fallInc: null,
+        offline: false, flush: false, buffer: 0, pendingPush: null, win: [], hist: Array.from({ length: 60 }, () => 74), cam: 'snap', shutter: false,
+        actMode: 'week', ppgMode: 'raw', lastSched: -1, lastThr: 0, ph: 0
+      };
+
+      /* sample data */
+      const INC = [
+        { id: 2, t: new Date(2026, 10, 9, 14, 20), title: 'Afternoon dose overdue', detail: 'Calcium 500 mg is not yet marked as taken.', status: 'pending' },
+        { id: 1, t: new Date(2026, 10, 9, 10, 42), title: 'Fall detected - verified safe after check-in', detail: 'Wristband button pressed 11 s after the companion asked "Are you alright?"', status: 'resolved' },
+        { id: 3, t: new Date(2026, 10, 9, 3, 12), title: 'SpO2 dipped to 92% for 3 min', detail: 'Recovered to 96% without intervention.', status: 'resolved' },
+        { id: 4, t: new Date(2026, 10, 8, 21, 5), title: 'Evening dose taken late', detail: 'Atorvastatin 20 mg logged 52 min after schedule.', status: 'resolved' }
+      ];
+      const MEDS = [
+        { id: 'met', p: 'Morning', name: 'Metformin', dose: '500 mg', time: '8:00 AM', h: 8, done: true },
+        { id: 'aml', p: 'Morning', name: 'Amlodipine', dose: '5 mg', time: '8:00 AM', h: 8, done: true },
+        { id: 'vit', p: 'Afternoon', name: 'Vitamin D', dose: '1000 IU', time: '1:00 PM', h: 13, done: true },
+        { id: 'calc', p: 'Afternoon', name: 'Calcium', dose: '500 mg', time: '2:00 PM', h: 14, done: false },
+        { id: 'ato', p: 'Evening', name: 'Atorvastatin', dose: '20 mg', time: '7:00 PM', h: 19, done: false },
+        { id: 'mel', p: 'Night', name: 'Melatonin', dose: '3 mg', time: '9:30 PM', h: 21.5, done: false }
+      ];
+      const KB = [
+        { trigger: 'scheduled', text: 'Nov 9 · 2:00 PM - HR avg: 74 bpm, SpO2: 98%, Temp: 99.0°F, Fall event at 10:42 AM resolved' },
+        { trigger: 'scheduled', text: 'Nov 9 · 1:30 PM - HR avg: 73 bpm, SpO2: 98%, Temp: 98.9°F, Meds 3/6 taken' },
+        { trigger: 'scheduled', text: 'Nov 9 · 1:00 PM - HR avg: 72 bpm, SpO2: 97%, Temp: 98.7°F, Meds 3/6 taken' }
+      ];
+      const TX = [
+        { who: 'agent', text: 'Good afternoon, Margaret. How are you feeling after lunch?' },
+        { who: 'patient', text: 'A little tired, but fine.' },
+        { who: 'agent', text: 'That is understandable. Remember to drink water through the afternoon.' }
+      ];
+      const WK = { labels: ['Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon'], values: [82, 80, 79, 74, 69, 64, 61] };
+      const DAY = { labels: ['6a', '7a', '8a', '9a', '10a', '11a', '12p', '1p', '2p', '3p'], values: [12, 38, 55, 62, 44, 30, 36, 58, 41, 34] };
+      const TEMPH = [97.9, 98.1, 98.3, 98.4, 98.6, 98.7, 98.9, 99.0, 99.1, 99.2];
+      const PTT = Array.from({ length: 12 }, () => 212 + (Math.random() - .5) * 14);
+      const PPG_N = 250, PPG = Array.from({ length: PPG_N }, () => ({ raw: 0, filt: 0 }));
+      const LBL = { resolved: 'Resolved', pending: 'Pending', critical: 'Critical' };
+      const snapTime = 'Last snapshot ' + fmtTime(new Date(Date.now() - 9 * 60000));
+      for (let i = 0; i < 300; i++)S.win.push({ hr: 74 + (Math.random() - .5) * 4, spo2: 97.6 + (Math.random() - .5), temp: 99.1 + (Math.random() - .5) * .1, rr: 16 + (Math.random() - .5) * 1.5 });
+      { const n = new Date(); S.lastSched = n.getHours() * 60 + n.getMinutes() }
+
+      /* helpers */
+      const C = f => (f - 32) * 5 / 9;
+      const tempStr = f => S.unit === 'F' ? f.toFixed(1) + '°F' : C(f).toFixed(1) + '°C';
+      function toast(m) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; const c = $('#toasts'); c.appendChild(d); while (c.children.length > 3) c.firstChild.remove(); setTimeout(() => d.remove(), 4600) }
+      function level(k, v) {
+        if (k === 'hr') return v > 120 || v < 45 ? 'crit' : (v > 100 || v < 50 ? 'warn' : 'ok');
+        if (k === 'spo2') return v < 90 ? 'crit' : (v < 94 ? 'warn' : 'ok');
+        if (k === 'temp') return v >= 100.4 ? 'crit' : (v >= 99.1 ? 'warn' : 'ok');
+        return v > 24 || v < 8 ? 'crit' : (v > 20 || v < 12 ? 'warn' : 'ok');
+      }
+      const PILL = { hr: { ok: 'Normal', warn: 'Elevated', crit: 'Check now' }, spo2: { ok: 'Normal', warn: 'Low', crit: 'Check now' }, temp: { ok: 'Normal', warn: 'Slightly warm', crit: 'Fever range' }, rr: { ok: 'Normal', warn: 'Fast', crit: 'Check now' } };
+      const FAM = {
+        hr: { ok: 'Resting calmly.', warn: 'A little higher than usual.', crit: 'Much higher than usual. Please check in.' },
+        spo2: { ok: 'Breathing well.', warn: 'A little low. Keep an eye on her.', crit: 'Low. Check on her now.' },
+        temp: { ok: 'Comfortable.', warn: 'Slightly warm. Encourage her to drink water.', crit: 'In the fever range. Call the clinic.' },
+        rr: { ok: 'Breathing easily.', warn: 'Breathing a little fast.', crit: 'Breathing very fast. Check on her.' }
+      };
+      const lastN = (k, n) => S.win.slice(-n).map(s => s[k]);
+
+      /* vitals */
+      function setPill(id, k, l) { const e = $(id); e.className = 'pill ' + l; e.textContent = PILL[k][l] }
+      function renderVitals() {
+        const clin = ROLES[S.role].clin;
+        const lh = level('hr', S.hr), ls = level('spo2', S.spo2), lt = level('temp', S.temp), lr = level('rr', S.rr);
+        $('#hrVal').textContent = Math.round(S.hr); setPill('#hrPill', 'hr', lh);
+        $('#spoVal').textContent = Math.round(S.spo2); setPill('#spoPill', 'spo2', ls);
+        $('#spoArc').setAttribute('stroke-dasharray', (S.spo2 / 100 * 263.9).toFixed(1) + ' 264'); $('#spoRing').className = 'ring ' + ls;
+        $('#tVal').textContent = S.unit === 'F' ? S.temp.toFixed(1) : C(S.temp).toFixed(1); $('#tUnit').textContent = S.unit === 'F' ? '°F' : '°C';
+        setPill('#tPill', 'temp', lt); $('#thermo').setAttribute('class', 'thermo ' + lt);
+        $('#tMark').style.left = clamp((S.temp - 96) / 7 * 100, 0, 100) + '%';
+        $('#rrVal').textContent = Math.round(S.rr); setPill('#rrPill', 'rr', lr);
+        root.style.setProperty('--beat', (60 / S.hr).toFixed(2) + 's');
+        root.style.setProperty('--breath', (30 / S.rr).toFixed(2) + 's');
+        if (clin) {
+          const d = S.temp - 98.4, dd = S.unit === 'F' ? d : d * 5 / 9;
+          $('#hrSub').textContent = `Baseline 72 bpm · 5 min avg ${mean(lastN('hr', 300)).toFixed(0)}`;
+          $('#spoSub').textContent = `Baseline 97% · 5 min low ${Math.min(...lastN('spo2', 300)).toFixed(0)}%`;
+          $('#tSub').textContent = `Morning ${tempStr(98.4)} · change ${dd >= 0 ? '+' : ''}${dd.toFixed(1)}°`;
+          $('#rrSub').textContent = `Baseline 16/min · 5 min avg ${mean(lastN('rr', 300)).toFixed(0)}`;
+        } else {
+          $('#hrSub').textContent = FAM.hr[lh]; $('#spoSub').textContent = FAM.spo2[ls]; $('#tSub').textContent = FAM.temp[lt]; $('#rrSub').textContent = FAM.rr[lr];
+        }
+        const n = S.hist.length, pts = S.hist.map((v, i) => [i / (n - 1) * 120, 38 - clamp((v - 50) / 80, 0, 1) * 34]);
+        const p = pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join('L');
+        $('#hrLine').setAttribute('d', 'M' + p); $('#hrArea').setAttribute('d', 'M0,40L' + p + 'L120,40Z');
+        $('#hrDot').style.top = (pts[n - 1][1] / 40 * 100) + '%';
+      }
+
+      /* charts */
+      function lineChart(el, o) {
+        const w = el.clientWidth || 320, h = o.h || 200, pl = o.pl || 38, pr = 14, pt = o.pt || 30, pb = 26, iw = w - pl - pr, ih = h - pt - pb, n = o.values.length;
+        const X = i => pl + (n === 1 ? iw / 2 : i * iw / (n - 1)), Y = v => pt + ih - (v - o.min) / (o.max - o.min) * ih, fmt = o.fmt || String;
+        let s = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${esc(o.label)}">`;
+        const tk = o.ticks || 4;
+        for (let k = 0; k <= tk; k++) { const v = o.min + (o.max - o.min) * k / tk; s += `<line class="grid" x1="${pl}" x2="${w - pr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text class="tick" x="${pl - 6}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end">${fmt(v)}</text>` }
+        const step = Math.max(1, Math.ceil(n * (o.lw || 34) / iw));
+        o.labels.forEach((l, i) => { if ((n - 1 - i) % step === 0) s += `<text class="tick" x="${X(i).toFixed(1)}" y="${h - 6}" text-anchor="middle">${l}</text>` });
+        if (o.base) s += `<line class="base" x1="${pl}" x2="${w - pr}" y1="${Y(o.base.v).toFixed(1)}" y2="${Y(o.base.v).toFixed(1)}"/><text class="tick" x="${w - pr}" y="${(Y(o.base.v) - 5).toFixed(1)}" text-anchor="end">${o.base.label}</text>`;
+        const pts = o.values.map((v, i) => X(i).toFixed(1) + ',' + Y(clamp(v, o.min, o.max)).toFixed(1));
+        s += `<path class="ar" d="M${X(0).toFixed(1)},${Y(o.min).toFixed(1)}L${pts.join('L')}L${X(n - 1).toFixed(1)},${Y(o.min).toFixed(1)}Z"/><path class="ln" d="M${pts.join('L')}"/>`;
+        (o.flags || []).forEach(f => {
+          const x = X(f.i), end = x > w * .55, dir = end ? -1 : 1;
+          s += `<line class="fl-line" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${pt - 8}" y2="${pt + ih}"/><polygon class="fl-warn" points="${x.toFixed(1)},${pt - 20} ${(x + dir * 9).toFixed(1)},${pt - 15} ${x.toFixed(1)},${pt - 10}"/><text class="fl-txt" x="${(x + dir * 14).toFixed(1)}" y="${pt - 11}" text-anchor="${end ? 'end' : 'start'}">${esc(f.text)}</text>`
+        });
+        o.values.forEach((v, i) => { const last = i === n - 1; if (n <= 12 || last) s += `<circle class="pt${last ? ' last' : ''}" cx="${X(i).toFixed(1)}" cy="${Y(clamp(v, o.min, o.max)).toFixed(1)}" r="${last ? 5 : 3.5}"/>` });
+        el.innerHTML = s + '</svg>';
+      }
+      function drawActivity() {
+        const wk = S.actMode === 'week';
+        lineChart($('#actChart'), { label: wk ? 'Daily mobility score for the past week' : 'Hourly movement score today', labels: wk ? WK.labels : DAY.labels, values: wk ? WK.values : DAY.values, min: 0, max: 100, ticks: 4, h: 230, base: wk ? { v: 75, label: 'Usual 75' } : null, flags: wk ? [{ i: 5, text: 'Gradual decline alert' }] : [] });
+        $('#actNote').textContent = wk ? 'Alert raised Sunday: three days in a row below Margaret\'s usual score of 75, down 21 points since Tuesday.' : 'Hourly movement score from the wristband IMU. Quiet stretches match meals and rest.';
+      }
+      function drawPtt() {
+        lineChart($('#pttChart'), { label: 'Pulse transit variation', labels: PTT.map((_, i) => i === PTT.length - 1 ? 'now' : '-' + (PTT.length - 1 - i) * 5 + 's'), values: PTT, min: 190, max: 240, ticks: 5, h: 170, pt: 16, lw: 44 });
+      }
+      function drawTemp() {
+        const F = S.unit === 'F', v = TEMPH.map((x, i) => i === TEMPH.length - 1 ? S.temp : x), conv = x => F ? x : C(x);
+        lineChart($('#tempChart'), { label: 'Temperature by hour', labels: ['6a', '7a', '8a', '9a', '10a', '11a', '12p', '1p', '2p', '3p'], values: v.map(conv), min: F ? 97 : 36, max: F ? 101 : 38.5, ticks: F ? 4 : 5, h: 170, pt: 16, fmt: x => x.toFixed(1), base: { v: conv(100.4), label: 'Fever ' + conv(100.4).toFixed(1) + '°' } });
+      }
+      function drawCharts() { drawActivity(); if (!$('#clin').hidden) { drawPtt(); drawTemp() } }
+      function drawPPG() {
+        const c = $('#ppg'); if (!c || $('#clin').hidden) return;
+        const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight; if (!w) return;
+        if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr) }
+        const x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
+        const cs = getComputedStyle(root), line = cs.getPropertyValue('--line').trim(), teal = cs.getPropertyValue('--teal').trim(), muted = cs.getPropertyValue('--muted').trim();
+        x.strokeStyle = line; x.lineWidth = 1;
+        for (let i = 1; i < 4; i++) { const y = h * i / 4; x.beginPath(); x.moveTo(0, y); x.lineTo(w, y); x.stroke() }
+        const key = S.ppgMode, lo = key === 'raw' ? -.8 : -.1, hi = key === 'raw' ? 2.1 : 1.6;
+        x.strokeStyle = teal; x.lineWidth = 2; x.lineJoin = 'round'; x.beginPath();
+        PPG.forEach((s, i) => { const px = i / (PPG_N - 1) * w, py = h - (s[key] - lo) / (hi - lo) * h; i ? x.lineTo(px, py) : x.moveTo(px, py) }); x.stroke();
+        x.fillStyle = muted; x.font = '11px ' + (cs.getPropertyValue('--f-mono') || 'monospace'); x.fillText((key === 'raw' ? 'Raw' : 'Filtered') + ' · 25 Hz · 10 s window', 8, h - 8);
+      }
+      function ppgTick() {
+        S.ph += S.hr / 60 / 25; const ph = S.ph % 1, tt = S.ph * 60 / S.hr;
+        const sig = Math.exp(-Math.pow((ph - .18) / .07, 2)) + .4 * Math.exp(-Math.pow((ph - .5) / .1, 2));
+        PPG.shift(); PPG.push({ raw: sig + .35 * Math.sin(tt * .9) + (Math.random() - .5) * .25, filt: sig + (Math.random() - .5) * .02 });
+        drawPPG();
+      }
+
+      /* incidents */
+      function renderInc() {
+        const can = ROLES[S.role].resolve;
+        INC.sort((a, b) => b.t - a.t);
+        $('#incCount').textContent = INC.filter(i => i.status !== 'resolved').length + ' open';
+        $('#incList').innerHTML = INC.map(i => `<li class="inc ${i.status}"><time>${stamp(i.t)}</time><div><strong>${esc(i.title)}</strong><span class="d">${esc(i.detail)}</span></div><div class="inc-act"><span class="badge ${i.status}">${LBL[i.status]}</span>${i.status !== 'resolved' && can && !i.fall ? `<button class="btn sm" type="button" data-res="${i.id}">Mark resolved</button>` : ''}</div></li>`).join('');
+      }
+      function addInc(title, detail, status) { INC.unshift({ id: Date.now() + Math.random(), t: new Date(), title, detail, status }); renderInc(); toast('New alert: ' + title) }
+
+      /* meds */
+      function nowH() { const n = new Date(); return n.getHours() + n.getMinutes() / 60 }
+      function renderMeds() {
+        const done = MEDS.filter(m => m.done).length;
+        $('#medCount').textContent = done + ' of ' + MEDS.length + ' taken';
+        $('#medBar').style.width = MEDS.length ? (done / MEDS.length * 100) + '%' : '0%';
+        const periods = ['Morning', 'Afternoon', 'Evening', 'Night'];
+        $('#medList').innerHTML = periods.map(p => {
+          const list = MEDS.filter(m => m.p === p);
+          return `<div class="period">
+            <h3>${p}</h3>
+            ${list.length ? list.map(m => {
+              const od = !m.done && m.h < nowH();
+              return `<div class="med">
+                <div class="t">
+                  <b>${esc(m.name)} <span style="font-weight:400;color:var(--muted);font-size:12px">${esc(m.dose)}</span></b>
+                  <span>${esc(m.time)}</span>
+                </div>
+                <span class="med-status ${m.done ? 'taken' : (od ? 'overdue' : 'pending')}" aria-label="Status: ${m.done ? 'Taken' : (od ? 'Overdue' : 'Pending')}">
+                  ${m.done ? `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg> Taken` : (od ? `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg> Overdue` : `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg> Pending`
+                  )}
+                </span>
+              </div>`;
+            }).join('') : '<div style="font-size:11.5px;color:var(--muted);padding:4px 0 6px">No medicines scheduled</div>'}
+          </div>`;
+        }).join('');
+      }
+
+      /* conn + alert */
+      function renderConn() {
+        const c = $('#conn');
+        if (S.offline) { c.dataset.s = 'offline'; $('#connText').textContent = 'Gateway offline · buffering ' + S.buffer + ' samples' }
+        else if (S.flush) { c.dataset.s = 'sync'; $('#connText').textContent = 'Reconnected · syncing ' + S.buffer + ' buffered samples' }
+        else { c.dataset.s = 'online'; $('#connText').textContent = 'Online · Companion connected' }
+        $('#stale').hidden = !S.offline; $('#metrics').classList.toggle('stale', S.offline);
+        if ($('#simOffline')) $('#simOffline').textContent = S.offline ? 'Restore gateway internet' : 'Cut gateway internet';
+      }
+      function renderAlert() {
+        const el = $('#alert'), can = ROLES[S.role].resolve;
+        document.body.dataset.state = S.state;
+        if (S.state === 'normal') { el.hidden = true; el.className = 'alert'; el.innerHTML = ''; return }
+        el.hidden = false; el.className = 'alert ' + S.state;
+        if (S.state === 'verifying') {
+          el.innerHTML = `<div class="al-ic" aria-hidden="true">!</div><div><h2>Possible fall detected. Verifying.</h2><p class="al-p">Impact at ${fmtTime(S.fallAt)} followed by no movement. The companion asked "Are you alright?" and is waiting for a reply or a wristband button press.</p><div class="bar"><i id="cdBar"></i></div></div><div class="al-side"><div class="count" id="cd">0:30</div>${can ? '<button class="btn signal" type="button" data-act="safe">I confirmed she is safe</button>' : '<span class="muted">Caregivers have been notified</span>'}</div>`;
+        } else {
+          el.innerHTML = `<div class="al-ic" aria-hidden="true">!</div><div><h2>Emergency. No response to the fall check.</h2><p class="al-p">Emergency contacts were alerted at ${fmtTime(new Date())}. Margaret has not replied to the companion or pressed the wristband button.</p><ul class="contacts"><li>Priya Iyer, daughter <span>SMS and call placed</span></li><li>Dr. Sarah Jenkins' clinic <span>Alert sent</span></li><li>Sunita Nair, caregiver <span>Push notification</span></li></ul></div><div class="al-side">${can ? '<button class="btn signal" type="button" data-act="ack">Acknowledge and mark resolved</button>' : '<span class="muted">Waiting for a caregiver to acknowledge</span>'}</div>`;
+        }
+      }
+
+      /* fall state machine */
+      function startFall() {
+        if (S.state !== 'normal') { toast('A fall check is already in progress.'); return }
+        const now = new Date(); S.state = 'verifying'; S.deadline = Date.now() + 30000; S.boost = 26; S.fallAt = now;
+        S.fallInc = { id: Date.now(), t: now, title: 'Fall detected - verifying', detail: 'Impact spike followed by no movement. Waiting for the patient to respond.', status: 'pending', fall: true };
+        INC.unshift(S.fallInc);
+        say('sys', 'IMU: 3.1 g impact, then motion variance below threshold for 4 s');
+        say('agent', 'Margaret, are you alright? Say "I\'m fine" or press the button on your wristband.');
+        pushSummary('event'); renderAlert(); renderInc();
+      }
+      function resolveFall(how) {
+        if (S.state === 'normal') return;
+        const was = S.state, inc = S.fallInc, secs = Math.round((Date.now() - S.fallAt) / 1000);
+        S.state = 'normal';
+        inc.title = was === 'critical' ? 'Fall detected - emergency response acknowledged' : 'Fall detected - verified safe after check-in';
+        inc.detail = how + ' after ' + secs + ' s.'; inc.status = 'resolved'; inc.fall = false;
+        toast('Fall incident resolved.'); renderAlert(); renderInc(); pushSummary('event');
+      }
+      function escalate() {
+        S.state = 'critical'; const i = S.fallInc; i.status = 'critical'; i.title = 'Fall detected - no response, emergency contacts alerted'; i.detail = 'No reply to the companion or wristband within 30 s.';
+        say('sys', 'notify_contacts: Priya Iyer (SMS + call), Dr. Sarah Jenkins clinic (alert), Sunita Nair (push)');
+        renderAlert(); renderInc(); toast('No response. Emergency contacts have been alerted.');
+      }
+      function fallLoop() {
+        if (S.state === 'verifying') {
+          const rem = Math.max(0, (S.deadline - Date.now()) / 1000), cd = $('#cd');
+          if (cd) { cd.textContent = '0:' + String(Math.ceil(rem)).padStart(2, '0'); $('#cdBar').style.width = (rem / 30 * 100) + '%' }
+          if (rem <= 0) escalate();
+        }
+        const lc = $('#liveClock'); if (lc) lc.textContent = new Date().toLocaleTimeString('en-US');
+      }
+
+      /* RAG aggregation */
+      function buildSummary() {
+        const w = S.win.slice(-900), a = k => mean(w.map(s => s[k]));
+        const open = INC.filter(i => i.status !== 'resolved'), recent = INC.filter(i => i.status === 'resolved').slice(0, 1);
+        const ev = [...open.map(i => i.title.toLowerCase() + ' (' + i.status + ')'), ...recent.map(i => i.title.toLowerCase() + ' at ' + fmtTime(i.t) + ' resolved')].slice(0, 2).join('; ');
+        return `${stamp(new Date())} - HR avg: ${a('hr').toFixed(0)} bpm, SpO2: ${a('spo2').toFixed(0)}%, Temp: ${a('temp').toFixed(1)}°F, Resp: ${a('rr').toFixed(0)}/min. Meds ${MEDS.filter(m => m.done).length}/${MEDS.length} taken.${ev ? ' Events: ' + ev + '.' : ''}`;
+      }
+      function pushSummary(trigger) {
+        if (S.offline) { S.pendingPush = trigger; toast('Gateway offline. Summary queued for the companion knowledge base.'); return }
+        KB.unshift({ trigger, text: buildSummary() }); if (KB.length > 8) KB.pop(); renderKB();
+        if (trigger !== 'scheduled') toast('Companion knowledge base updated (' + trigger + ').');
+      }
+      function renderKB() {
+        $('#kbList').innerHTML = KB.slice(0, 4).map(k => `<li><span class="kbt">${k.trigger}</span>${esc(k.text)}</li>`).join('');
+        const tok = KB.slice(0, 4).reduce((a, k) => a + Math.ceil(k.text.length / 4), 0);
+        $('#kbMeta').textContent = KB.length + ' summaries stored · newest 4 use about ' + tok + ' tokens.';
+      }
+      function renderNext() {
+        const n = new Date(), nx = new Date(n); nx.setSeconds(0, 0); nx.setMinutes(Math.floor(n.getMinutes() / 15) * 15 + 15);
+        const s = Math.max(0, Math.round((nx - n) / 1000));
+        $('#kbNext').textContent = 'Next scheduled push ' + fmtTime(nx) + ' (in ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + '). Abnormal readings push immediately.';
+      }
+
+      /* voice companion */
+      function say(who, text) { TX.push({ who, text }); if (TX.length > 40) TX.shift(); renderTx() }
+      function renderTx() {
+        const ul = $('#tx');
+        ul.innerHTML = TX.map(m => `<li class="line ${m.who}">${m.who === 'sys' ? '' : `<span class="who">${m.who === 'agent' ? 'Companion' : 'Margaret'}</span>`}${esc(m.text)}</li>`).join('');
+        ul.scrollTop = ul.scrollHeight;
+      }
+      function hook(name, payload) { say('sys', 'POST /webhooks/elevenlabs/tools  ' + name + ' ' + JSON.stringify(payload)) }
+      function utter(text) {
+        text = text.trim(); if (!text) return;
+        say('patient', text);
+        setTimeout(() => {
+          const t = text.toLowerCase();
+          if (/chest|can't breathe|cannot breathe|severe pain/.test(t)) {
+            say('agent', "I'm alerting your caregiver and your doctor right now. Please stay where you are.");
+            hook('flag_symptom', { symptom: 'chest pain', severity: 'high' }); addInc('Patient reports chest pain', 'Reported to the companion. Doctor and caregiver alerted.', 'critical'); pushSummary('event');
+          } else if (/dizz|faint|light.?head|spinning/.test(t)) {
+            say('agent', `Thank you for telling me. Please sit down and stay put. Your heart rate is ${Math.round(S.hr)} bpm and your temperature is ${tempStr(S.temp)}. I have told your caregiver.`);
+            hook('flag_symptom', { symptom: 'dizziness', severity: 'moderate' }); addInc('Patient reports dizziness', 'Reported to the companion. Caregiver notified.', 'pending'); pushSummary('event');
+          } else if (/temp|fever|warm|hot/.test(t)) {
+            const d = S.temp - 98.4;
+            say('agent', d > .5 ? `Your temperature has risen slightly to ${tempStr(S.temp)} since this morning. Remember to drink some water.` : `Your temperature is ${tempStr(S.temp)}, about the same as this morning.`);
+          } else if (/medic|pill|tablet|dose/.test(t)) {
+            const done = MEDS.filter(m => m.done).length, nx = MEDS.find(m => !m.done);
+            say('agent', `You have taken ${done} of ${MEDS.length} medicines today.` + (nx ? ` Next is ${nx.name} ${nx.dose}, due ${nx.time}.` : ' You are all done for today.'));
+          } else if (/\b(fine|okay|ok|alright|good)\b/.test(t)) {
+            if (S.state !== 'normal') { say('agent', 'I am glad you are safe. I have told your caregiver.'); resolveFall('Patient replied "I am fine" to the companion') }
+            else say('agent', 'Good to hear. I am here if you need anything.');
+          } else say('agent', 'I am here. Would you like me to let your caregiver know?');
+        }, 700);
+      }
+
+      /* Hardcoded Raspberry Pi Camera IP (Change this IP address here if needed) */
+      const PI_IP = '192.168.31.231';
+      function getPiBaseUrl() {
+        return `http://${PI_IP}:5000`;
+      }
+
+      window.useSimulatedFeed = function() {
+        S.cam = 'live';
+        S.camMode = 'sim';
+        renderCam();
+        toast('Switched to simulated Baymax camera feed.');
+      };
+
+      window.retryPiCam = function() {
+        requestLive();
+      };
+
+      /* Camera Theater & Maximize Mode */
+      function openCameraTheater() {
+        const modal = $('#camTheaterModal');
+        const body = $('#camTheaterBody');
+        const piBase = getPiBaseUrl();
+
+        if (S.cam === 'live' && S.camMode === 'rpi') {
+          body.innerHTML = `<img src="${piBase}/video_feed?t=${Date.now()}" alt="Maximized Camera Feed" style="width:100%;height:100%;object-fit:contain" />`;
+        } else if (S.cam === 'live' && S.camMode === 'sim') {
+          body.innerHTML = SCENE;
+        } else {
+          requestLive();
+          body.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff">
+              <span class="rpi-pulse-dot" style="width:14px;height:14px;background:#eab308;box-shadow:0 0 12px #eab308"></span>
+              <span style="font-weight:600;font-size:14px">Connecting live camera...</span>
+            </div>
+          `;
+          setTimeout(() => {
+            if (S.cam === 'live' && S.camMode === 'rpi') {
+              body.innerHTML = `<img src="${piBase}/video_feed?t=${Date.now()}" alt="Maximized Camera Feed" style="width:100%;height:100%;object-fit:contain" />`;
+            } else if (S.cam === 'failed') {
+              body.innerHTML = `
+                <div style="text-align:center;color:#fff;padding:20px;max-width:400px">
+                  <div style="font-size:28px;margin-bottom:8px">📡</div>
+                  <h3 style="margin:0 0 8px;font-size:16px">Camera stream unavailable</h3>
+                  <p style="font-size:12.5px;color:#94a3b8;line-height:1.4">Ensure the in-home companion device is powered on and connected.</p>
+                  <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+                    <button class="cam-theater-btn" onclick="openCameraTheater()">Retry</button>
+                    <button class="cam-theater-btn" onclick="useSimulatedFeed();openCameraTheater()">Simulate</button>
+                  </div>
+                </div>
+              `;
+            }
+          }, 1500);
+        }
+
+        modal.classList.add('open');
+      }
+
+      function closeCameraTheater() {
+        const modal = $('#camTheaterModal');
+        if (modal) modal.classList.remove('open');
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+
+      function toggleNativeFullscreen() {
+        const box = $('#camTheaterBox');
+        if (!document.fullscreenElement) {
+          if (box.requestFullscreen) box.requestFullscreen();
+          else if (box.webkitRequestFullscreen) box.webkitRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+        }
+      }
+
+      window.openCameraTheater = openCameraTheater;
+      window.closeCameraTheater = closeCameraTheater;
+
+      if ($('#btnMaximizeCam')) $('#btnMaximizeCam').addEventListener('click', openCameraTheater);
+      if ($('#btnCloseTheater')) $('#btnCloseTheater').addEventListener('click', closeCameraTheater);
+      if ($('#btnTheaterFullscreen')) $('#btnTheaterFullscreen').addEventListener('click', toggleNativeFullscreen);
+      if ($('#camTheaterModal')) {
+        $('#camTheaterModal').addEventListener('click', (e) => {
+          if (e.target === $('#camTheaterModal')) closeCameraTheater();
+        });
+      }
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeCameraTheater();
+      });
+
+      /* camera */
+      const SCENE = '<svg viewBox="0 0 320 180" role="img" aria-label="Baymax camera view"><rect width="320" height="180" style="fill:var(--cam-wall)"/><rect y="128" width="320" height="52" style="fill:var(--cam-floor)"/><rect x="214" y="22" width="76" height="70" rx="4" style="fill:var(--cam-win)"/><path d="M252 22v70M214 57h76" style="stroke:var(--cam-wall);stroke-width:3"/><rect x="92" y="84" width="112" height="58" rx="14" style="fill:var(--cam-chair)"/><rect x="82" y="104" width="22" height="44" rx="9" style="fill:var(--cam-chair)"/><rect x="192" y="104" width="22" height="44" rx="9" style="fill:var(--cam-chair)"/><circle cx="148" cy="70" r="11" style="fill:var(--cam-ink)"/><rect x="132" y="82" width="32" height="40" rx="12" style="fill:var(--cam-ink)"/><rect x="104" y="140" width="88" height="6" rx="3" style="fill:var(--cam-ink);opacity:.35"/></svg>';
+
+      function renderCam() {
+        const v = $('#camView'); let cls = 'cam', html;
+        const piBase = getPiBaseUrl();
+
+        if (S.cam === 'req') {
+          html = SCENE + `<div class="ov tl rpi-badge-live"><span class="rpi-pulse-dot" style="background:#eab308;box-shadow:0 0 8px #eab308"></span>Connecting camera...</div>`;
+        } else if (S.cam === 'live') {
+          cls += ' live';
+          if (S.camMode === 'rpi') {
+            html = `
+              <img class="cam-feed-img" id="rpiFeedImg" src="${piBase}/video_feed?t=${Date.now()}" alt="Baymax Camera Live Stream" />
+              <div class="ov tl rpi-badge-live">
+                <span class="rpi-pulse-dot"></span>
+                <span>LIVE · Baymax Camera</span>
+              </div>
+              <div class="ov tr" id="liveClock">${new Date().toLocaleTimeString('en-US')}</div>
+              <div class="ov bl">Baymax camera stream</div>
+            `;
+          } else {
+            html = SCENE + '<div class="ov tl rpi-badge-live"><span class="rpi-pulse-dot"></span>LIVE · Simulated</div><div class="ov tr" id="liveClock">' + new Date().toLocaleTimeString('en-US') + '</div><div class="ov bl">Baymax Sensor Hub</div>';
+          }
+        } else if (S.cam === 'failed') {
+          html = `
+            ${SCENE}
+            <div class="cam-error-box">
+              <div style="font-size:20px">📡</div>
+              <div style="font-weight:600;font-size:13px">Camera stream unavailable</div>
+              <div style="font-size:11.5px;color:#94a3b8;max-width:280px;line-height:1.4">
+                Ensure the in-home companion device is powered on and connected.
+              </div>
+              <div style="display:flex;gap:7px;margin-top:4px">
+                <button class="btn sm" type="button" onclick="retryPiCam()" style="background:var(--teal);color:#fff;border:0;padding:4px 9px;font-size:11.5px">Retry</button>
+                <button class="btn sm" type="button" onclick="useSimulatedFeed()" style="background:transparent;color:var(--teal);border:1px solid var(--teal);padding:4px 9px;font-size:11.5px">Simulate Feed</button>
+              </div>
+            </div>
+          `;
+        } else {
+          html = SCENE + '<div class="ov tl">Snapshot</div><div class="ov bl">' + snapTime + '</div>';
+        }
+
+        v.className = cls; v.innerHTML = html;
+
+        if (S.cam === 'live' && S.camMode === 'rpi') {
+          const img = $('#rpiFeedImg');
+          if (img) {
+            img.onerror = () => {
+              console.warn('Pi stream image load failed.');
+              S.cam = 'failed';
+              renderCam();
+            };
+          }
+        }
+
+        $('#btnLive').textContent = S.cam === 'live' ? 'End live view' : (S.cam === 'req' ? 'Connecting...' : 'Request live view');
+        $('#btnLive').disabled = S.cam === 'req';
+      }
+
+      async function requestLive() {
+        if (S.cam === 'live') {
+          try {
+            fetch(`${getPiBaseUrl()}/stop`, { mode: 'no-cors' }).catch(() => {});
+          } catch (e) {}
+          S.cam = 'snap';
+          renderCam();
+          toast('Live view stopped. Returned to snapshot mode.');
+          return;
+        }
+
+        S.cam = 'req';
+        renderCam();
+
+        const piUrl = getPiBaseUrl();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+        try {
+          await fetch(`${piUrl}/start`, { mode: 'no-cors', signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          S.cam = 'live';
+          S.camMode = 'rpi';
+          renderCam();
+          toast('Live view connected to Baymax camera');
+        } catch (err) {
+          clearTimeout(timeoutId);
+          console.warn(`Could not connect to Raspberry Pi at ${piUrl}:`, err);
+          S.cam = 'failed';
+          renderCam();
+        }
+      }
+
+      /* offline resilience */
+      function setOffline(v) {
+        if (v) { S.offline = true; S.buffer = 0; toast('Gateway lost internet. Readings are buffered in local SQLite.') }
+        else {
+          S.offline = false; S.flush = true; renderConn();
+          setTimeout(() => {
+            const n = S.buffer; S.buffer = 0; S.flush = false; renderConn(); renderVitals(); toast('Gateway reconnected. ' + n + ' buffered samples synced.');
+            if (S.pendingPush) { const p = S.pendingPush; S.pendingPush = null; pushSummary(p) }
+          }, 1500)
+        }
+        renderConn();
+      }
+
+      /* roles */
+      function setRole(r) {
+        S.role = r; const R = ROLES[r]; $('#uname').textContent = R.user; $('#userAv').textContent = R.init;
+        $('#clin').hidden = !R.clin;
+        renderVitals(); renderAlert(); renderInc(); drawCharts(); drawPPG();
+      }
+
+      /* main loop */
+      function tick() {
+        S.t++;
+        S.hr = clamp(S.hr + (74 + S.boost - S.hr) * .25 + (Math.random() - .5) * 3, 52, 140);
+        S.spo2 = clamp(S.spo2 + (97.6 - S.spo2) * .2 + (Math.random() - .5) * .6, 88, 100);
+        S.temp = clamp(S.temp + (99.2 - S.temp) * .05 + (Math.random() - .5) * .04, 96, 103);
+        S.rr = clamp(S.rr + (16 - S.rr) * .2 + (Math.random() - .5) * .8, 10, 30);
+        S.boost = S.boost * .9 < .5 ? 0 : S.boost * .9;
+        S.hist.push(S.hr); S.hist.shift();
+        S.win.push({ hr: S.hr, spo2: S.spo2, temp: S.temp, rr: S.rr }); if (S.win.length > 1800) S.win.shift();
+        if (S.offline) { S.buffer++; renderConn() } else renderVitals();
+        if (S.t % 5 === 0) { PTT.push(212 + (Math.random() - .5) * 14 - (S.hr - 74) * .3); PTT.shift(); if (!$('#clin').hidden) drawPtt() }
+        if (S.t % 10 === 0 && !$('#clin').hidden) drawTemp();
+        if ((S.hr > 110 || S.spo2 < 93 || S.temp >= 100.4) && Date.now() - S.lastThr > 60000) { S.lastThr = Date.now(); pushSummary('threshold') }
+        const n = new Date(), slot = n.getHours() * 60 + n.getMinutes();
+        if (n.getMinutes() % 15 === 0 && S.lastSched !== slot) { S.lastSched = slot; pushSummary('scheduled') }
+        renderNext();
+      }
+
+      /* events */
+      $('#logoutBtn').addEventListener('click', () => { sessionStorage.clear(); window.location.href = 'login.html' });
+      $('#unitBtn').addEventListener('click', () => { S.unit = S.unit === 'F' ? 'C' : 'F'; renderVitals(); if (!$('#clin').hidden) drawTemp() });
+      if ($('#simFall')) $('#simFall').addEventListener('click', startFall);
+      if ($('#simBtn')) $('#simBtn').addEventListener('click', () => { if (S.state === 'normal') toast('No fall check is active.'); else resolveFall('Wristband button pressed') });
+      if ($('#simDizzy')) $('#simDizzy').addEventListener('click', () => utter('I feel dizzy.'));
+      if ($('#simOffline')) $('#simOffline').addEventListener('click', () => setOffline(!S.offline));
+      $('#btnLive').addEventListener('click', requestLive);
+      $('#btnCheck').addEventListener('click', () => { say('agent', 'Hi Margaret, ' + ROLES[S.role].user + ' would like to know how you are feeling today.'); setTimeout(() => say('patient', 'Feeling alright, just a bit tired.'), 1600); toast('Check-in sent to the companion.') });
+      $('#kbPush').addEventListener('click', () => pushSummary('manual'));
+      $('#chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) utter(b.textContent) });
+      $('#vform').addEventListener('submit', e => { e.preventDefault(); const i = $('#vtext'); utter(i.value); i.value = '' });
+      $$('[data-act-mode]').forEach(b => b.addEventListener('click', () => { S.actMode = b.dataset.actMode; $$('[data-act-mode]').forEach(x => x.setAttribute('aria-pressed', x === b)); drawActivity() }));
+      $$('[data-ppg]').forEach(b => b.addEventListener('click', () => { S.ppgMode = b.dataset.ppg; $$('[data-ppg]').forEach(x => x.setAttribute('aria-pressed', x === b)) }));
+
+      /* medication accordion toggle */
+      const medToggleBtn = $('#medToggleBtn');
+      const medCollapse = $('#medCollapse');
+      const medCard = $('#medCard');
+      if (medToggleBtn && medCollapse && medCard) {
+        medToggleBtn.addEventListener('click', () => {
+          const isExpanded = medCollapse.classList.toggle('expanded');
+          medCard.classList.toggle('is-expanded', isExpanded);
+          medToggleBtn.setAttribute('aria-expanded', isExpanded);
+        });
+      }
+
+      document.addEventListener('click', e => {
+        const r = e.target.closest('[data-res]');
+        if (r) { const i = INC.find(x => String(x.id) === r.dataset.res); if (i) { i.status = 'resolved'; i.detail += ' Resolved by ' + ROLES[S.role].user + ' at ' + fmtTime(new Date()) + '.'; renderInc(); toast('Marked resolved.') } return }
+        const a = e.target.closest('[data-act]');
+        if (a) { resolveFall(a.dataset.act === 'safe' ? ROLES[S.role].user + ' confirmed the patient is safe' : 'Caregiver acknowledged the emergency response') }
+      });
+      let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawCharts(); drawPPG() }, 120) });
+
+      /* boot */
+      const pCode = new URLSearchParams(window.location.search).get('code') || sessionStorage.getItem('baymaxcare_patient_code') || sessionStorage.getItem('careloop_patient_code');
+      const pName = sessionStorage.getItem('baymaxcare_patient_name') || sessionStorage.getItem('careloop_patient_name');
+      const gName = sessionStorage.getItem('baymaxcare_guardian_name') || sessionStorage.getItem('careloop_guardian_name');
+      if (pName && $('#gPatientName')) {
+        $('#gPatientName').textContent = pName;
+        const inits = pName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+        if ($('#gPatientAvatar')) $('#gPatientAvatar').textContent = inits;
+        if ($('#gPatientSub') && pCode) $('#gPatientSub').textContent = `ID ${pCode} · Live In-Home Monitoring`;
+      }
+      if (gName && $('#uname')) {
+        $('#uname').textContent = gName;
+        const gInits = gName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+        if ($('#userAv')) $('#userAv').textContent = gInits;
+      }
+
+      renderMeds(); renderInc(); renderAlert(); renderCam(); renderConn(); renderTx(); renderKB(); renderNext();
+      setRole('guardian');
+      setInterval(tick, 1000); setInterval(fallLoop, 250); setInterval(ppgTick, 40);
+    })();
+  </script>
+</body>
+
+</html>

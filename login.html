@@ -1,0 +1,1576 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>BaymaxCare · Clinical & Guardian Portal</title>
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=IBM+Plex+Mono:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    :root {
+      --bg: #edf4f3;
+      --surface: #ffffff;
+      --surface-2: #f4f9f8;
+      --line: #d8e5e3;
+      --fg: #13302e;
+      --muted: #587471;
+      --teal: #0b7a7c;
+      --on-teal: #ffffff;
+      --teal-soft: #d6eeed;
+      --mint: #58c28c;
+      --amber: #a86400;
+      --amber-soft: #fcefd2;
+      --red: #bb2d24;
+      --red-soft: #fbe1de;
+      --green: #1b7f52;
+      --green-soft: #dbf2e5;
+      --on-signal: #ffffff;
+      --shadow: 0 1px 2px rgba(19, 48, 46, .06), 0 8px 24px rgba(19, 48, 46, .06);
+      --f-display: "Bricolage Grotesque", system-ui, sans-serif;
+      --f-body: "Schibsted Grotesk", system-ui, sans-serif;
+      --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0b1a19;
+        --surface: #122725;
+        --surface-2: #173230;
+        --line: #24423f;
+        --fg: #e2f1ef;
+        --muted: #8db0ac;
+        --teal: #4fc9cb;
+        --on-teal: #04201f;
+        --teal-soft: #15403f;
+        --mint: #6fd8a0;
+        --amber: #f2b34f;
+        --amber-soft: #3b2d11;
+        --red: #ff7f74;
+        --red-soft: #45221f;
+        --green: #5ad79c;
+        --green-soft: #143a29;
+        --on-signal: #1c1305;
+        --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+        color-scheme: dark;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font: 400 14px/1.45 var(--f-body);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      margin: 0;
+    }
+
+    .main-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Auth Card View */
+    .login-wrap {
+      width: 100%;
+      max-width: 440px;
+      transition: all .25s ease;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .logo svg {
+      width: 42px;
+      height: 42px;
+      color: var(--teal);
+    }
+
+    .logo h1 {
+      font: 700 24px/1.15 var(--f-display);
+      margin: 0;
+      color: var(--teal);
+      letter-spacing: -0.02em;
+    }
+
+    .logo span {
+      font: 500 11.5px var(--f-mono);
+      background: var(--teal-soft);
+      color: var(--teal);
+      padding: 3px 8px;
+      border-radius: 99px;
+      margin-left: 4px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 32px;
+    }
+
+    h2 {
+      font: 700 22px/1.2 var(--f-display);
+      margin: 0 0 6px;
+      letter-spacing: -0.01em;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 13.5px;
+      margin-bottom: 22px;
+      line-height: 1.4;
+    }
+
+    .role-tabs {
+      display: flex;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 4px;
+      background: var(--surface-2);
+      margin-bottom: 22px;
+    }
+
+    .role-tab {
+      flex: 1;
+      border: 0;
+      background: none;
+      font: 600 13px var(--f-body);
+      padding: 10px 14px;
+      border-radius: 9px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all .15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .role-tab[aria-selected="true"] {
+      background: var(--surface);
+      color: var(--teal);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font: 600 12.5px var(--f-body);
+      margin-bottom: 6px;
+      color: var(--fg);
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-wrap .input-icon {
+      position: absolute;
+      left: 13px;
+      width: 17px;
+      height: 17px;
+      color: var(--muted);
+      pointer-events: none;
+      transition: color .15s;
+      flex-shrink: 0;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"] {
+      font: 500 13.5px var(--f-body);
+      color: var(--fg);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 11px 14px 11px 40px;
+      width: 100%;
+      min-height: 44px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px var(--teal-soft);
+    }
+
+    .input-wrap:focus-within .input-icon {
+      color: var(--teal);
+    }
+
+    .mono-input {
+      font-family: var(--f-mono);
+      font-size: 13px;
+    }
+
+    .field-hint {
+      margin: 5px 0 0;
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .field-hint.info {
+      color: var(--teal);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .doctor-fields-container {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: fadeIn .2s ease-out;
+    }
+
+    .doctor-fields-container[hidden] {
+      display: none !important;
+    }
+
+    .doctor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    .doctor-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font: 600 11.5px var(--f-display);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--teal);
+    }
+
+    .doctor-subtag {
+      font: 500 11px var(--f-mono);
+      background: var(--teal-soft);
+      color: var(--teal);
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+
+    .btn {
+      font: 600 13.5px var(--f-body);
+      border-radius: 10px;
+      padding: 12px 18px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--fg);
+      cursor: pointer;
+      width: 100%;
+      min-height: 44px;
+      transition: all .15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn.primary {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: var(--on-teal);
+    }
+
+    .btn.primary:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    .btn.secondary {
+      background: var(--surface-2);
+      color: var(--fg);
+    }
+
+    .btn.secondary:hover {
+      background: var(--line);
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .error {
+      background: var(--red-soft);
+      color: var(--red);
+      border: 1px solid color-mix(in srgb, var(--red) 30%, var(--line));
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      display: none;
+    }
+
+    .error.show {
+      display: block;
+    }
+
+    /* Preset Quick-Fill Chips */
+    .quick-chips-wrap {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--line);
+    }
+
+    .quick-chips-lbl {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 5px 9px;
+      font: 500 11.5px var(--f-mono);
+      color: var(--teal);
+      cursor: pointer;
+      transition: all .12s;
+    }
+
+    .chip-btn:hover {
+      background: var(--teal-soft);
+      border-color: var(--teal);
+    }
+
+    /* -----------------------------------------------------------
+       DOCTOR PATIENT PROFILES SELECTION VIEW
+       ----------------------------------------------------------- */
+    .doctor-profiles-wrap {
+      width: 100%;
+      max-width: 860px;
+      display: none;
+      animation: fadeIn .25s ease-out;
+    }
+
+    .doctor-profiles-wrap.active {
+      display: block;
+    }
+
+    .profiles-head-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px 24px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .doc-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .doc-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--teal-soft);
+      color: var(--teal);
+      display: grid;
+      place-content: center;
+      font: 700 18px var(--f-display);
+    }
+
+    .doc-info h3 {
+      margin: 0;
+      font: 700 17px var(--f-display);
+      color: var(--fg);
+    }
+
+    .doc-info p {
+      margin: 3px 0 0;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    .doc-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-create-profile {
+      background: var(--teal);
+      color: #fff;
+      border: 0;
+      font: 600 13px var(--f-body);
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: 0 2px 8px rgba(11, 122, 124, .25);
+      transition: all .15s ease;
+    }
+
+    .btn-create-profile:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    .btn-logout {
+      background: none;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font: 500 12.5px var(--f-body);
+      padding: 9px 13px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .btn-logout:hover {
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    .profiles-section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding: 0 4px;
+    }
+
+    .profiles-section-title h4 {
+      margin: 0;
+      font: 700 16px var(--f-display);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-count {
+      font: 600 11.5px var(--f-mono);
+      background: var(--teal-soft);
+      color: var(--teal);
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
+    .patient-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 16px;
+    }
+
+    .patient-profile-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: border-color .15s, transform .15s, box-shadow .15s;
+      position: relative;
+    }
+
+    .patient-profile-card:hover {
+      border-color: var(--teal);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(11, 122, 124, .12);
+    }
+
+    .p-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .p-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--teal-soft);
+      color: var(--teal);
+      display: grid;
+      place-content: center;
+      font: 700 16px var(--f-display);
+      flex-shrink: 0;
+    }
+
+    .p-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .p-name {
+      margin: 0;
+      font: 700 16px var(--f-display);
+      color: var(--fg);
+    }
+
+    .p-sub {
+      margin: 3px 0 0;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    .p-badge {
+      font: 600 10.5px var(--f-mono);
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--green-soft);
+      color: var(--green);
+      align-self: flex-start;
+    }
+
+    /* Guardian Credentials Box */
+    .guardian-creds-box {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 12.5px;
+    }
+
+    .creds-title {
+      font: 600 11.5px var(--f-display);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .creds-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .creds-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .creds-lbl {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .creds-val {
+      font-family: var(--f-mono);
+      font-weight: 600;
+      color: var(--teal);
+      background: var(--surface);
+      padding: 2px 7px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .copy-btn {
+      background: none;
+      border: 0;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color .12s;
+    }
+
+    .copy-btn:hover {
+      color: var(--teal);
+    }
+
+    .card-footer-btn {
+      margin-top: auto;
+      background: var(--teal-soft);
+      color: var(--teal);
+      border: 1px solid transparent;
+      font: 600 13px var(--f-body);
+      padding: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all .15s ease;
+    }
+
+    .card-footer-btn:hover {
+      background: var(--teal);
+      color: #fff;
+    }
+
+    /* -----------------------------------------------------------
+       CREATE NEW PROFILE MODAL
+       ----------------------------------------------------------- */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 32, 31, .6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open {
+      display: grid;
+    }
+
+    .modal-dialog {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, .25);
+      width: 100%;
+      max-width: 540px;
+      padding: 28px;
+      position: relative;
+      animation: modalSlideUp .2s ease-out;
+    }
+
+    @keyframes modalSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-head h3 {
+      margin: 0;
+      font: 700 20px var(--f-display);
+      color: var(--teal);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close {
+      background: none;
+      border: 0;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 8px;
+    }
+
+    .modal-close:hover {
+      color: var(--fg);
+      background: var(--surface-2);
+    }
+
+    /* 3 Clean Sections */
+    .section-card {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-card-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .section-step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--teal);
+      color: #fff;
+      font: 700 12px var(--f-display);
+      display: grid;
+      place-content: center;
+    }
+
+    .section-card-title {
+      font: 700 14px var(--f-display);
+      color: var(--fg);
+    }
+
+    .section-card-sub {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .creds-autogen-banner {
+      background: var(--teal-soft);
+      border: 1px dashed var(--teal);
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--teal);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .regen-btn {
+      background: var(--surface);
+      border: 1px solid var(--teal);
+      color: var(--teal);
+      border-radius: 6px;
+      padding: 3px 8px;
+      font: 600 11px var(--f-body);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .regen-btn:hover {
+      background: var(--teal);
+      color: #fff;
+    }
+
+    .modal-foot {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="main-container">
+
+    <!-- 1. AUTH CARD (DOCTOR OR GUARDIAN) -->
+    <div class="login-wrap" id="loginWrap">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <path
+            d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.6 4.5 6.3 4.5c2.1 0 3.8 1.2 5.7 3.3 1.9-2.1 3.6-3.3 5.7-3.3 3.7 0 5.4 3.9 3.9 7.3C19.5 16.4 12 21 12 21z" />
+          <path d="M12 11v6" />
+        </svg>
+        <h1>BaymaxCare</h1>
+        <span>Telehealth</span>
+      </div>
+
+      <div class="card">
+        <h2>Sign In</h2>
+        <p class="sub" id="roleDescText">Select your portal access mode to proceed</p>
+
+        <!-- Role Tabs -->
+        <div class="role-tabs" role="tablist" aria-label="Select role">
+          <button class="role-tab" role="tab" aria-selected="true" data-role="guardian" id="tab-guardian">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            Guardian
+          </button>
+          <button class="role-tab" role="tab" aria-selected="false" data-role="doctor" id="tab-doctor">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M2 12h20" />
+            </svg>
+            Doctor
+          </button>
+        </div>
+
+        <div class="error" id="errorMsg" role="alert"></div>
+
+        <form id="loginForm" novalidate>
+          <!-- Field 1: Username for Guardian / Email for Doctor -->
+          <div class="form-group">
+            <label for="primaryInput" id="primaryLabel">Guardian Username</label>
+            <div class="input-wrap">
+              <svg class="input-icon" id="primaryIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              <input type="text" id="primaryInput" name="primaryInput" placeholder="e.g. margaret_iyer_care" required
+                autocomplete="username" spellcheck="false">
+            </div>
+            <p class="field-hint" id="primaryHint">Enter the guardian username generated by the patient's doctor.</p>
+          </div>
+
+          <!-- Field 2: Password -->
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <input type="password" id="password" name="password" placeholder="••••••••" required
+                autocomplete="current-password">
+            </div>
+          </div>
+
+          <!-- Doctor Specific Verification Fields -->
+          <div class="doctor-fields-container" id="doctorSection" hidden>
+            <div class="doctor-header">
+              <span class="doctor-tag">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v20M2 12h20" />
+                </svg>
+                Physician Credentials
+              </span>
+              <span class="doctor-subtag">License Check</span>
+            </div>
+            <div class="form-group">
+              <label for="docFullName">Physician Full Name & Title</label>
+              <div class="input-wrap">
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <input type="text" id="docFullName" name="docFullName" placeholder="Dr. Sarah Jenkins, MD"
+                  value="Dr. Sarah Jenkins, MD" autocomplete="name">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="hospital">Hospital / Clinic Affiliation</label>
+              <div class="input-wrap">
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 21h18" />
+                  <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" />
+                  <path d="M9 9h6M12 6v6M9 16h6" />
+                </svg>
+                <input type="text" id="hospital" name="hospital" placeholder="St. Jude Senior Care Center"
+                  value="St. Jude Senior Care Center" autocomplete="organization">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="license">Medical License Number</label>
+              <div class="input-wrap">
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="16" rx="3" />
+                  <circle cx="9" cy="10" r="2" />
+                  <path d="M15 8h2M15 12h2M7 16h10" />
+                </svg>
+                <input type="text" id="license" name="license" class="mono-input" placeholder="MD-98421-CA"
+                  value="MD-98421-CA" autocomplete="off" spellcheck="false">
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn primary" id="submitBtn">Sign In to Dashboard</button>
+        </form>
+
+        <!-- Quick-Fill Demo Presets -->
+        <div class="quick-chips-wrap">
+          <span class="quick-chips-lbl" id="chipsTitle">1-Click Test Credentials:</span>
+          <div class="chips-row" id="chipsContainer">
+            <!-- Guardian chips -->
+            <button type="button" class="chip-btn" data-user="margaret_iyer_care" data-pwd="Care#Iyer2026">
+              Margaret Iyer (margaret_iyer_care)
+            </button>
+            <button type="button" class="chip-btn" data-user="robert_chen_care" data-pwd="Care#Chen742">
+              Robert Chen (robert_chen_care)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. DOCTOR PATIENT PROFILES SELECTION VIEW -->
+    <div class="doctor-profiles-wrap" id="doctorProfilesWrap">
+      <div class="profiles-head-card">
+        <div class="doc-meta">
+          <div class="doc-avatar" id="docAvatarInitials">SJ</div>
+          <div class="doc-info">
+            <h3 id="docDisplayHeading">Dr. Sarah Jenkins, MD</h3>
+            <p id="docSubHeading">St. Jude Senior Care Center · Geriatric Medicine · License: MD-98421-CA</p>
+          </div>
+        </div>
+        <div class="doc-actions">
+          <button class="btn-create-profile" id="openCreateModalBtn" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Create New Profile
+          </button>
+          <button class="btn-logout" id="doctorSignOutBtn" type="button">Sign Out</button>
+        </div>
+      </div>
+
+      <div class="profiles-section-title">
+        <h4>
+          <span>Assigned In-Home Patients</span>
+          <span class="badge-count" id="patientCountBadge">3 Active</span>
+        </h4>
+        <span style="font-size:12.5px;color:var(--muted)">Select a profile to load clinical monitoring</span>
+      </div>
+
+      <div class="patient-cards-grid" id="patientCardsGrid">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 3. CREATE NEW PATIENT PROFILE MODAL -->
+  <div class="modal-backdrop" id="createModalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="11" cy="7" r="4" />
+            <line x1="19" y1="8" x2="19" y2="14" />
+            <line x1="22" y1="11" x2="16" y2="11" />
+          </svg>
+          Create Patient Profile
+        </h3>
+        <button class="modal-close" id="closeCreateModalBtn" type="button" aria-label="Close modal">✕</button>
+      </div>
+
+      <form id="createProfileForm">
+        <!-- Section 1: Patient Name -->
+        <div class="section-card">
+          <div class="section-card-head">
+            <span class="section-step-num">1</span>
+            <span class="section-card-title">Patient Information</span>
+            <span class="section-card-sub">Clinical Record</span>
+          </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label for="newPatientName">Patient Full Name *</label>
+            <input type="text" id="newPatientName" placeholder="e.g. Arthur Pendelton" required autocomplete="off">
+          </div>
+          <div class="grid-2">
+            <div class="form-group" style="margin-bottom:0">
+              <label for="newPatientAge">Age</label>
+              <input type="number" id="newPatientAge" value="76" min="1" max="120">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label for="newPatientRoom">Room / Residence</label>
+              <input type="text" id="newPatientRoom" value="Apt 2B - East Wing">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Guardian Name -->
+        <div class="section-card">
+          <div class="section-card-head">
+            <span class="section-step-num">2</span>
+            <span class="section-card-title">Guardian Information</span>
+            <span class="section-card-sub">Primary Contact</span>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label for="newGuardianName">Guardian Full Name *</label>
+            <input type="text" id="newGuardianName" placeholder="e.g. Martha Pendelton" required autocomplete="off">
+            <p class="field-hint">Family member, legal healthcare proxy, or primary in-home caregiver.</p>
+          </div>
+        </div>
+
+        <!-- Section 3: Username and Password (Auto-Generated) -->
+        <div class="section-card">
+          <div class="section-card-head">
+            <span class="section-step-num">3</span>
+            <span class="section-card-title">Guardian Portal Credentials</span>
+            <span class="section-card-sub">Auto-Generated</span>
+          </div>
+
+          <div class="creds-autogen-banner">
+            <span>✨ Automatically linked to patient identity</span>
+            <button type="button" class="regen-btn" id="regenCredsBtn">
+              🔄 Regenerate
+            </button>
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px">
+            <label for="newGuardianUsername">Generated Guardian Username</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              <input type="text" id="newGuardianUsername" class="mono-input" required spellcheck="false">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0">
+            <label for="newGuardianPassword">Generated Guardian Password</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <input type="text" id="newGuardianPassword" class="mono-input" required spellcheck="false">
+            </div>
+            <p class="field-hint">Provide these credentials to the guardian to log in at the Guardian Dashboard.</p>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn secondary" style="width:auto" id="cancelCreateModalBtn">Cancel</button>
+          <button type="submit" class="btn primary" style="width:auto" id="savePatientProfileBtn">
+            ✓ Create Profile & Open Dashboard
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const $ = s => document.querySelector(s);
+      const $$ = s => [...document.querySelectorAll(s)];
+
+      // Views & Elements
+      const loginWrap = $('#loginWrap');
+      const doctorProfilesWrap = $('#doctorProfilesWrap');
+      const tabs = $$('.role-tab');
+      const form = $('#loginForm');
+      const errorEl = $('#errorMsg');
+      const doctorSection = $('#doctorSection');
+      const primaryInput = $('#primaryInput');
+      const primaryLabel = $('#primaryLabel');
+      const primaryHint = $('#primaryHint');
+      const roleDescText = $('#roleDescText');
+      const chipsContainer = $('#chipsContainer');
+      const chipsTitle = $('#chipsTitle');
+      const patientCardsGrid = $('#patientCardsGrid');
+      const patientCountBadge = $('#patientCountBadge');
+
+      // Modal Elements
+      const createModalBackdrop = $('#createModalBackdrop');
+      const openCreateModalBtn = $('#openCreateModalBtn');
+      const closeCreateModalBtn = $('#closeCreateModalBtn');
+      const cancelCreateModalBtn = $('#cancelCreateModalBtn');
+      const createProfileForm = $('#createProfileForm');
+      const newPatientName = $('#newPatientName');
+      const newGuardianName = $('#newGuardianName');
+      const newGuardianUsername = $('#newGuardianUsername');
+      const newGuardianPassword = $('#newGuardianPassword');
+      const regenCredsBtn = $('#regenCredsBtn');
+
+      let selectedRole = 'guardian';
+
+      // Default Pre-seeded Patients Cache (mirrors Aiven PostgreSQL)
+      let PATIENTS = [
+        {
+          patient_code: 'P-1042',
+          full_name: 'Margaret Iyer',
+          age: 78,
+          room_number: 'Apt 4B - Master Bedroom',
+          code_status: 'Full Code',
+          guardian_name: 'Sunita Nair',
+          guardian_username: 'margaret_iyer_care',
+          guardian_password: 'Care#Iyer2026',
+          chronic_conditions: ['Hypertension', 'Atrial Fibrillation', 'Type 2 Diabetes', 'Osteoarthritis']
+        },
+        {
+          patient_code: 'P-1043',
+          full_name: 'Robert Chen',
+          age: 74,
+          room_number: 'Suite 210 - East Wing',
+          code_status: 'Full Code',
+          guardian_name: 'David Chen',
+          guardian_username: 'robert_chen_care',
+          guardian_password: 'Care#Chen742',
+          chronic_conditions: ['Heart Failure (HFrEF)', 'Chronic Kidney Disease', 'Hyperlipidemia']
+        },
+        {
+          patient_code: 'P-1044',
+          full_name: 'Eleanor Vance',
+          age: 81,
+          room_number: 'Room 108 - Rehab Unit',
+          code_status: 'DNR/DNI Signed',
+          guardian_name: 'Clara Vance',
+          guardian_username: 'eleanor_vance_care',
+          guardian_password: 'Care#Vance810',
+          chronic_conditions: ['Post-op Hip Arthroplasty', 'Mild Cognitive Impairment', 'Osteoporosis']
+        }
+      ];
+
+      // Load live patients from Aiven FastAPI backend
+      async function fetchLivePatients() {
+        try {
+          const res = await fetch('http://127.0.0.1:8000/api/patients');
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              PATIENTS = data;
+            }
+          }
+        } catch (e) {
+          console.warn('Backend API not responding; using synchronized cached profiles', e);
+        }
+        renderPatientCards();
+      }
+
+      // Initialize Role Tabs
+      tabs.forEach(t => t.addEventListener('click', () => {
+        tabs.forEach(x => x.setAttribute('aria-selected', 'false'));
+        t.setAttribute('aria-selected', 'true');
+        selectedRole = t.dataset.role;
+        errorEl.classList.remove('show');
+        applyRoleMode(selectedRole);
+      }));
+
+      function applyRoleMode(role) {
+        if (role === 'guardian') {
+          primaryLabel.textContent = 'Guardian Username';
+          primaryInput.type = 'text';
+          primaryInput.placeholder = 'e.g. margaret_iyer_care';
+          primaryInput.value = '';
+          $('#password').value = '';
+          primaryHint.textContent = 'Enter the guardian username generated by the patient\'s doctor.';
+          roleDescText.textContent = 'Enter username & password provided by your doctor';
+          doctorSection.hidden = true;
+          chipsTitle.textContent = '1-Click Test Credentials (Guardian):';
+          chipsContainer.innerHTML = `
+            <button type="button" class="chip-btn" data-user="margaret_iyer_care" data-pwd="Care#Iyer2026">
+              Margaret Iyer (margaret_iyer_care)
+            </button>
+            <button type="button" class="chip-btn" data-user="robert_chen_care" data-pwd="Care#Chen742">
+              Robert Chen (robert_chen_care)
+            </button>
+            <button type="button" class="chip-btn" data-user="eleanor_vance_care" data-pwd="Care#Vance810">
+              Eleanor Vance (eleanor_vance_care)
+            </button>
+          `;
+        } else {
+          primaryLabel.textContent = 'Doctor Email / Physician ID';
+          primaryInput.type = 'email';
+          primaryInput.placeholder = 'dr.jenkins@baymaxcare.demo';
+          primaryInput.value = 'dr.jenkins@baymaxcare.demo';
+          $('#password').value = 'DoctorPass2026!';
+          primaryHint.textContent = 'Authorized hospital network or clinic login.';
+          roleDescText.textContent = 'Sign in to access patient profiles & clinical dashboards';
+          doctorSection.hidden = false;
+          chipsTitle.textContent = '1-Click Test Credentials (Doctor):';
+          chipsContainer.innerHTML = `
+            <button type="button" class="chip-btn" data-user="dr.jenkins@baymaxcare.demo" data-pwd="DoctorPass2026!">
+              Dr. Sarah Jenkins (Geriatrics)
+            </button>
+          `;
+        }
+        attachChipListeners();
+      }
+
+      function attachChipListeners() {
+        $$('.chip-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            primaryInput.value = btn.dataset.user;
+            $('#password').value = btn.dataset.pwd;
+            errorEl.classList.remove('show');
+          });
+        });
+      }
+
+      // Handle Sign-In Submission
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorEl.classList.remove('show');
+        const submitBtn = $('#submitBtn');
+        const val1 = primaryInput.value.trim();
+        const pwd = $('#password').value;
+
+        if (!val1 || !pwd) {
+          showError(selectedRole === 'guardian' ? 'Please enter both guardian username and password' : 'Please enter both doctor email and password');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Authenticating...';
+
+        if (selectedRole === 'guardian') {
+          // Verify Guardian username and password against backend or cache
+          try {
+            let matchedPatient = null;
+            try {
+              const res = await fetch('http://127.0.0.1:8000/api/login/guardian', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: val1, password: pwd })
+              });
+              if (res.ok) {
+                const resData = await res.json();
+                matchedPatient = {
+                  patient_code: resData.patient_code,
+                  full_name: resData.patient_name,
+                  guardian_name: resData.guardian_name
+                };
+              }
+            } catch (netErr) {
+              // Local fallback check
+              matchedPatient = PATIENTS.find(p => p.guardian_username === val1 && p.guardian_password === pwd);
+            }
+
+            if (!matchedPatient) {
+              // Also check local cache
+              matchedPatient = PATIENTS.find(p => p.guardian_username === val1 && p.guardian_password === pwd);
+            }
+
+            if (matchedPatient) {
+              sessionStorage.setItem('baymaxcare_role', 'guardian');
+              sessionStorage.setItem('baymaxcare_patient_code', matchedPatient.patient_code);
+              sessionStorage.setItem('baymaxcare_patient_name', matchedPatient.full_name);
+              sessionStorage.setItem('baymaxcare_guardian_name', matchedPatient.guardian_name || 'Guardian');
+              sessionStorage.setItem('careloop_patient_code', matchedPatient.patient_code);
+              sessionStorage.setItem('careloop_patient_name', matchedPatient.full_name);
+              window.location.href = `dashboard-guardian.html?code=${matchedPatient.patient_code}`;
+              return;
+            } else {
+              showError('Invalid guardian username or password. Please verify with your primary doctor.');
+              return;
+            }
+          } catch (err) {
+            showError('Authentication error. Please try again.');
+          }
+        } else {
+          // Doctor Login -> Transition to Patient Profiles Selection View!
+          const hospital = $('#hospital').value.trim() || 'St. Jude Senior Care Center';
+          const license = $('#license').value.trim() || 'MD-98421-CA';
+          const doctorName = ($('#docFullName') && $('#docFullName').value.trim()) || 'Dr. Sarah Jenkins, MD';
+
+          // Compute Doctor initials dynamically
+          const nameClean = doctorName.replace(/^Dr\.?\s+/i, '').replace(/,\s*MD$/i, '').trim();
+          const nameParts = nameClean.split(/\s+/).filter(Boolean);
+          let docInit = 'SJ';
+          if (nameParts.length >= 2) {
+            docInit = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+          } else if (nameParts.length === 1 && nameParts[0].length >= 2) {
+            docInit = nameParts[0].slice(0, 2).toUpperCase();
+          } else if (nameParts.length === 1) {
+            docInit = nameParts[0][0].toUpperCase();
+          }
+
+          // Optional sync with backend API
+          try {
+            await fetch('http://127.0.0.1:8000/api/login/doctor', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: val1, password: pwd, doctor_name: doctorName, hospital, license })
+            });
+          } catch (_) {}
+
+          sessionStorage.setItem('baymaxcare_role', 'doctor');
+          sessionStorage.setItem('baymaxcare_user', val1);
+          sessionStorage.setItem('baymaxcare_doctor_name', doctorName);
+          sessionStorage.setItem('baymaxcare_doctor_init', docInit);
+          sessionStorage.setItem('careloop_doctor_name', doctorName);
+          sessionStorage.setItem('baymaxcare_hospital', hospital);
+          sessionStorage.setItem('baymaxcare_license', license);
+          sessionStorage.setItem('careloop_hospital', hospital);
+          sessionStorage.setItem('careloop_license', license);
+
+          $('#docDisplayHeading').textContent = doctorName;
+          $('#docSubHeading').textContent = `${hospital} · Geriatric Medicine · License: ${license}`;
+
+          // Switch views
+          loginWrap.style.display = 'none';
+          doctorProfilesWrap.classList.add('active');
+          await fetchLivePatients();
+        }
+      });
+
+      // Render Doctor Patient Profiles
+      function renderPatientCards() {
+        patientCountBadge.textContent = `${PATIENTS.length} Active`;
+        patientCardsGrid.innerHTML = PATIENTS.map(p => {
+          const initials = p.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+          const conditionsHtml = (p.chronic_conditions || []).slice(0, 3)
+            .map(c => `<span style="font-size:11px;background:var(--surface-2);border:1px solid var(--line);padding:2px 7px;border-radius:6px;color:var(--muted)">${c}</span>`).join(' ');
+
+          return `
+            <div class="patient-profile-card">
+              <div class="p-head">
+                <div class="p-avatar">${initials}</div>
+                <div class="p-meta">
+                  <h4 class="p-name">${p.full_name}</h4>
+                  <p class="p-sub">${p.age} yrs · ID ${p.patient_code} · ${p.room_number || 'Home Suite'}</p>
+                </div>
+                <span class="p-badge">${p.code_status || 'Full Code'}</span>
+              </div>
+
+              <div style="display:flex;flex-wrap:wrap;gap:5px">
+                ${conditionsHtml}
+              </div>
+
+              <!-- Guardian Credentials Box -->
+              <div class="guardian-creds-box">
+                <div class="creds-title">
+                  <span>Guardian Portal Access</span>
+                  <span style="color:var(--teal)">${p.guardian_name || 'Primary Guardian'}</span>
+                </div>
+                <div class="creds-row">
+                  <span class="creds-lbl">Username:</span>
+                  <span class="creds-val">
+                    ${p.guardian_username}
+                    <button class="copy-btn" title="Copy Username" onclick="navigator.clipboard.writeText('${p.guardian_username}')">📋</button>
+                  </span>
+                </div>
+                <div class="creds-row">
+                  <span class="creds-lbl">Password:</span>
+                  <span class="creds-val">
+                    ${p.guardian_password}
+                    <button class="copy-btn" title="Copy Password" onclick="navigator.clipboard.writeText('${p.guardian_password}')">📋</button>
+                  </span>
+                </div>
+              </div>
+
+              <button class="card-footer-btn" data-code="${p.patient_code}" data-name="${p.full_name}" type="button">
+                Open Patient Dashboard
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
+            </div>
+          `;
+        }).join('');
+
+        // Attach Click to open doctor dashboard for chosen patient
+        $$('.card-footer-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const code = btn.dataset.code;
+            const name = btn.dataset.name;
+            sessionStorage.setItem('careloop_patient_code', code);
+            sessionStorage.setItem('careloop_patient_name', name);
+            window.location.href = `dashboard-doctor.html?code=${encodeURIComponent(code)}`;
+          });
+        });
+      }
+
+      // -----------------------------------------------------------
+      // CREATE NEW PATIENT PROFILE MODAL & CREDENTIALS AUTO-GEN
+      // -----------------------------------------------------------
+      function generateCredentials(patientNameStr) {
+        const clean = (patientNameStr || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const parts = clean.split('_').filter(Boolean);
+        const randNum = Math.floor(100 + Math.random() * 899);
+
+        let u = 'patient_care';
+        let p = `Care#${randNum}!`;
+
+        if (parts.length >= 2) {
+          const lastNameCap = parts[parts.length - 1].charAt(0).toUpperCase() + parts[parts.length - 1].slice(1);
+          u = `${parts[0]}_${parts[parts.length - 1]}_care`;
+          p = `Care#${lastNameCap}${randNum}`;
+        } else if (parts.length === 1) {
+          const nameCap = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+          u = `${parts[0]}_care_${randNum}`;
+          p = `Care#${nameCap}${randNum}`;
+        }
+        return { username: u, password: p };
+      }
+
+      // Auto-generate credentials as user types patient name
+      newPatientName.addEventListener('input', () => {
+        const creds = generateCredentials(newPatientName.value);
+        newGuardianUsername.value = creds.username;
+        newGuardianPassword.value = creds.password;
+      });
+
+      // Regenerate button
+      regenCredsBtn.addEventListener('click', () => {
+        const creds = generateCredentials(newPatientName.value || 'Caregiver');
+        newGuardianUsername.value = creds.username;
+        newGuardianPassword.value = creds.password;
+      });
+
+      // Open Modal
+      openCreateModalBtn.addEventListener('click', () => {
+        createProfileForm.reset();
+        const defaultCreds = generateCredentials('Patient');
+        newGuardianUsername.value = defaultCreds.username;
+        newGuardianPassword.value = defaultCreds.password;
+        createModalBackdrop.classList.add('open');
+        newPatientName.focus();
+      });
+
+      // Close Modal
+      function closeModal() {
+        createModalBackdrop.classList.remove('open');
+      }
+      closeCreateModalBtn.addEventListener('click', closeModal);
+      cancelCreateModalBtn.addEventListener('click', closeModal);
+      createModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === createModalBackdrop) closeModal();
+      });
+
+      // Submit Create Patient Profile
+      createProfileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const pName = newPatientName.value.trim();
+        const gName = newGuardianName.value.trim();
+        const gUser = newGuardianUsername.value.trim();
+        const gPwd = newGuardianPassword.value.trim();
+        const pAge = parseInt($('#newPatientAge').value) || 75;
+        const pRoom = $('#newPatientRoom').value.trim() || 'Room 101';
+
+        if (!pName || !gName || !gUser || !gPwd) {
+          alert('Please fill out all required fields.');
+          return;
+        }
+
+        const saveBtn = $('#savePatientProfileBtn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving Profile...';
+
+        let newCode = `P-${1042 + PATIENTS.length}`;
+
+        // Attempt saving to live FastAPI backend on Aiven PostgreSQL
+        try {
+          const res = await fetch('http://127.0.0.1:8000/api/patients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              full_name: pName,
+              guardian_name: gName,
+              guardian_username: gUser,
+              guardian_password: gPwd,
+              age: pAge,
+              room_number: pRoom
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.patient_code) newCode = data.patient_code;
+          }
+        } catch (apiErr) {
+          console.warn('API save offline, saving to session state', apiErr);
+        }
+
+        // Add to local array
+        const newObj = {
+          patient_code: newCode,
+          full_name: pName,
+          age: pAge,
+          room_number: pRoom,
+          code_status: 'Full Code',
+          guardian_name: gName,
+          guardian_username: gUser,
+          guardian_password: gPwd,
+          chronic_conditions: ['Baseline Geriatric Monitoring', 'Vital Telemetry Active']
+        };
+        PATIENTS.unshift(newObj);
+
+        // Store active patient and navigate to doctor dashboard for this patient
+        sessionStorage.setItem('careloop_patient_code', newCode);
+        sessionStorage.setItem('careloop_patient_name', pName);
+        window.location.href = `dashboard-doctor.html?code=${encodeURIComponent(newCode)}`;
+      });
+
+      // Doctor Sign Out
+      $('#doctorSignOutBtn').addEventListener('click', () => {
+        doctorProfilesWrap.classList.remove('active');
+        loginWrap.style.display = 'block';
+        $('#submitBtn').disabled = false;
+        $('#submitBtn').textContent = 'Sign In to Dashboard';
+      });
+
+      function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.add('show');
+        $('#submitBtn').disabled = false;
+        $('#submitBtn').textContent = 'Sign In to Dashboard';
+      }
+
+      // Initial Setup
+      applyRoleMode('guardian');
+    })();
+  </script>
+</body>
+
+</html>
