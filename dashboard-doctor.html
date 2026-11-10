@@ -3159,6 +3159,13 @@
         }, 700);
       }
 
+      function getApiBaseUrl() {
+        if (window.location.protocol.startsWith('http')) {
+          return `${window.location.origin}/api`;
+        }
+        return 'http://127.0.0.1:8000/api';
+      }
+
       /* Raspberry Pi Camera integration (cam_server.py) */
       const DEFAULT_PI_IP = '192.168.31.231';
       function getPiIp() {
@@ -4793,7 +4800,7 @@
         const code = urlParams.get('code') || sessionStorage.getItem('baymaxcare_patient_code') || sessionStorage.getItem('careloop_patient_code');
         if (!code) return;
         try {
-          const res = await fetch(`http://127.0.0.1:8000/api/patient?code=${encodeURIComponent(code)}`);
+          const res = await fetch(`${getApiBaseUrl()}/patient?code=${encodeURIComponent(code)}`);
           if (res.ok) {
             const data = await res.json();
             PATIENT_DATA.name = data.full_name;

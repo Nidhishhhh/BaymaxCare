@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -669,8 +670,23 @@ async def auto_fill_intake(payload: AutoFillPayload, db: Session = Depends(get_d
 
     return {"message": "Records successfully auto-filled in database", "patient": patient.full_name}
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+@app.get("/")
+def serve_index():
+    """Serves login.html by default."""
+    return FileResponse(os.path.join(BASE_DIR, "login.html"))
+
+@app.get("/{filename}.html")
+def serve_html(filename: str):
+    """Serves any dashboard or html file in project root."""
+    file_path = os.path.join(BASE_DIR, f"{filename}.html")
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+    raise HTTPException(status_code=404, detail="Page not found")
+
 if __name__ == "__main__":
     import uvicorn
-    # Run locally on port 8000
-    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
+    # Run accessible to phone and local network on port 8000
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
 

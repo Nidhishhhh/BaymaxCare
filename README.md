@@ -93,3 +93,4 @@ Open `login.html` in your browser to sign in:
 - Remote video feed only streams upon authorized live request.
 - Fall verification protocol waits 30 seconds before escalating to emergency contacts.
 - Strict data separation between clinical doctor administration and family guardian portals.
+

@@ -1182,10 +1182,17 @@
         }
       ];
 
+      function getApiBaseUrl() {
+        if (window.location.protocol.startsWith('http')) {
+          return `${window.location.origin}/api`;
+        }
+        return 'http://127.0.0.1:8000/api';
+      }
+
       // Load live patients from Aiven FastAPI backend
       async function fetchLivePatients() {
         try {
-          const res = await fetch('http://127.0.0.1:8000/api/patients');
+          const res = await fetch(`${getApiBaseUrl()}/patients`);
           if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
@@ -1279,7 +1286,7 @@
           try {
             let matchedPatient = null;
             try {
-              const res = await fetch('http://127.0.0.1:8000/api/login/guardian', {
+              const res = await fetch(`${getApiBaseUrl()}/login/guardian`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: val1, password: pwd })
@@ -1338,7 +1345,7 @@
 
           // Optional sync with backend API
           try {
-            await fetch('http://127.0.0.1:8000/api/login/doctor', {
+            await fetch(`${getApiBaseUrl()}/login/doctor`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email: val1, password: pwd, doctor_name: doctorName, hospital, license })
@@ -1512,7 +1519,7 @@
 
         // Attempt saving to live FastAPI backend on Aiven PostgreSQL
         try {
-          const res = await fetch('http://127.0.0.1:8000/api/patients', {
+          const res = await fetch(`${getApiBaseUrl()}/patients`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
