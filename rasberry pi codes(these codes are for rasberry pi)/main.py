@@ -181,9 +181,13 @@ def main():
 
             # Hotword listening when idle
             if listener is not None and not start_requested.is_set() and not telehealth_in_call.is_set():
-                heard = listener.listen(lambda: start_requested.is_set() or telehealth_in_call.is_set() or quit_event.is_set())
-                if heard and not telehealth_in_call.is_set():
-                    start_requested.set()
+                try:
+                    heard = listener.listen(lambda: start_requested.is_set() or telehealth_in_call.is_set() or quit_event.is_set())
+                    if heard and not telehealth_in_call.is_set():
+                        start_requested.set()
+                except Exception as e:
+                    print(f"[Hotword] Error during listening ({e}) -> falling back to push buttons.")
+                    listener = None
 
             if not start_requested.wait(timeout=0.3):
                 continue  # Nothing requested yet

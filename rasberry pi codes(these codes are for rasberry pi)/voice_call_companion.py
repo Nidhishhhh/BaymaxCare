@@ -2,6 +2,7 @@
 BaymaxCare In-Home Companion - 2-Way Voice Call Client
 Runs on Raspberry Pi with USB Microphone & Speaker.
 Connects with Doctor and Guardian dashboards over WebRTC / WebSocket.
+Supports automatic SSL/WSS self-signed negotiation and hardware ALSA rate fallback.
 """
 
 import sys
@@ -10,6 +11,8 @@ import json
 import logging
 import threading
 import asyncio
+import ssl
+import array
 from typing import Optional
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -40,9 +43,48 @@ except ImportError:
     AUDIO_AVAILABLE = False
 
 
+def get_ssl_context():
+    """Returns an SSL context that accepts self-signed certificates for local HTTPS/WSS."""
+    try:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    except Exception:
+        return None
+
+
+def resample_pcm16(raw_bytes: bytes, src_rate: int, dst_rate: int = SAMPLE_RATE) -> bytes:
+    """
+    Fast linear interpolation PCM 16-bit mono resampler.
+    Zero external dependencies, fully compatible with Python 3.10-3.13 (no audioop needed).
+    """
+    if src_rate == dst_rate or not raw_bytes:
+        return raw_bytes
+    samples = array.array('h')
+    samples.frombytes(raw_bytes)
+    n_in = len(samples)
+    if n_in == 0:
+        return b''
+    ratio = dst_rate / src_rate
+    n_out = int(n_in * ratio)
+    out_samples = array.array('h', [0] * n_out)
+    for i in range(n_out):
+        src_pos = i / ratio
+        idx = int(src_pos)
+        frac = src_pos - idx
+        if idx + 1 < n_in:
+            val = int(samples[idx] * (1.0 - frac) + samples[idx + 1] * frac)
+        else:
+            val = samples[idx]
+        out_samples[i] = max(-32768, min(32767, val))
+    return out_samples.tobytes()
+
+
 class BaymaxVoiceCompanion:
     def __init__(self, host=SERVER_HOST, port=SERVER_PORT, patient_code=PATIENT_CODE, on_call_status_change=None):
-        self.ws_url = f"ws://{host}:{port}/ws/stream"
+        self.host = host
+        self.port = port
         self.patient_code = patient_code
         self.on_call_status_change = on_call_status_change
         self.in_call = False
@@ -51,35 +93,53 @@ class BaymaxVoiceCompanion:
         self.audio = pyaudio.PyAudio() if AUDIO_AVAILABLE else None
         self.input_stream = None
         self.output_stream = None
+        self.actual_input_rate = SAMPLE_RATE
+        self.actual_output_rate = SAMPLE_RATE
         self.stop_audio = threading.Event()
         self.running = True
 
     def start_audio_streams(self):
-        """Starts microphone recording and speaker playback streams."""
+        """Starts microphone recording and speaker playback streams with rate fallback."""
         if not AUDIO_AVAILABLE or not self.audio:
             logger.info("Audio hardware not available; running in test simulation mode.")
             return
 
-        try:
-            # Open speaker playback stream
-            self.output_stream = self.audio.open(
-                format=pyaudio.paInt16,
-                channels=CHANNELS,
-                rate=SAMPLE_RATE,
-                output=True,
-                frames_per_buffer=CHUNK
-            )
-            # Open microphone input stream
-            self.input_stream = self.audio.open(
-                format=pyaudio.paInt16,
-                channels=CHANNELS,
-                rate=SAMPLE_RATE,
-                input=True,
-                frames_per_buffer=CHUNK
-            )
-            logger.info("Microphone and speaker streams activated.")
-        except Exception as e:
-            logger.error(f"Error opening audio streams: {e}")
+        # 1. Open speaker playback stream (probe 16000, 48000, 44100)
+        for rate in [SAMPLE_RATE, 48000, 44100]:
+            try:
+                self.output_stream = self.audio.open(
+                    format=pyaudio.paInt16,
+                    channels=CHANNELS,
+                    rate=rate,
+                    output=True,
+                    frames_per_buffer=CHUNK
+                )
+                self.actual_output_rate = rate
+                logger.info(f"Speaker stream opened at {rate} Hz.")
+                break
+            except Exception as e:
+                logger.debug(f"Speaker rate {rate} Hz not accepted: {e}")
+
+        # 2. Open microphone input stream (probe 16000, 48000, 44100)
+        for rate in [SAMPLE_RATE, 48000, 44100]:
+            try:
+                self.input_stream = self.audio.open(
+                    format=pyaudio.paInt16,
+                    channels=CHANNELS,
+                    rate=rate,
+                    input=True,
+                    frames_per_buffer=CHUNK
+                )
+                self.actual_input_rate = rate
+                logger.info(f"Microphone stream opened at {rate} Hz.")
+                break
+            except Exception as e:
+                logger.debug(f"Microphone rate {rate} Hz not accepted: {e}")
+
+        if not self.input_stream:
+            logger.warning("Could not open microphone stream on any probed sample rate.")
+        if not self.output_stream:
+            logger.warning("Could not open speaker stream on any probed sample rate.")
 
     def stop_audio_streams(self):
         """Stops and cleans up audio streams."""
@@ -104,7 +164,6 @@ class BaymaxVoiceCompanion:
     def play_chime(self, ring_type="ring"):
         """Plays a friendly alert chime for incoming calls."""
         logger.info(f"*** 🔔 CHIME: {ring_type.upper()} - Incoming 2-way call from family/doctor ***")
-        # If pyttsx3 or system sound is available:
         try:
             import pyttsx3
             engine = pyttsx3.init()
@@ -121,6 +180,8 @@ class BaymaxVoiceCompanion:
                 try:
                     data = self.input_stream.read(CHUNK, exception_on_overflow=False)
                     if data:
+                        if self.actual_input_rate != SAMPLE_RATE:
+                            data = resample_pcm16(data, self.actual_input_rate, SAMPLE_RATE)
                         await websocket.send(data)
                 except Exception as e:
                     logger.debug(f"Audio read error: {e}")
@@ -168,51 +229,72 @@ class BaymaxVoiceCompanion:
             self.play_chime("hangup")
 
         elif m_type == "audio_frame" and self.in_call:
-            # Play incoming audio frame on speaker
             raw = msg.get("raw_bytes")
             if self.output_stream and raw:
                 try:
-                    self.output_stream.write(bytes(raw))
+                    to_play = bytes(raw)
+                    if self.actual_output_rate != SAMPLE_RATE:
+                        to_play = resample_pcm16(to_play, SAMPLE_RATE, self.actual_output_rate)
+                    self.output_stream.write(to_play)
                 except Exception as e:
                     logger.debug(f"Speaker write error: {e}")
 
     async def run(self):
-        """Main connection and auto-reconnect loop."""
+        """Main connection and auto-reconnect loop with HTTPS/WSS auto-negotiation."""
         logger.info(f"Starting BaymaxCare Voice Companion Client for {self.patient_code}")
-        logger.info(f"Connecting to {self.ws_url}...")
 
-        while True:
-            try:
-                async with websockets.connect(self.ws_url) as ws:
-                    self.ws = ws
-                    logger.info("Connected to BaymaxCare Telehealth Server!")
+        endpoints = [
+            (f"wss://{self.host}:{self.port}/ws/stream", get_ssl_context(), "Secure WSS"),
+            (f"ws://{self.host}:{self.port}/ws/stream", None, "Standard WS")
+        ]
 
-                    # Register companion device
-                    await ws.send(json.dumps({
-                        "type": "companion_online",
-                        "device": DEVICE_IDENTITY,
-                        "patient_code": self.patient_code,
-                        "status": "ready_for_calls"
-                    }))
+        while self.running:
+            connected = False
+            for url, ssl_ctx, proto_name in endpoints:
+                if not self.running:
+                    break
+                try:
+                    logger.info(f"Attempting {proto_name} connection to {url}...")
+                    async with websockets.connect(url, ssl=ssl_ctx) as ws:
+                        self.ws = ws
+                        connected = True
+                        logger.info(f"Connected to BaymaxCare Telehealth Server via {proto_name}!")
 
-                    async for message in ws:
-                        if isinstance(message, bytes):
-                            if self.in_call and self.output_stream:
+                        # Register companion device
+                        await ws.send(json.dumps({
+                            "type": "companion_online",
+                            "device": DEVICE_IDENTITY,
+                            "patient_code": self.patient_code,
+                            "status": "ready_for_calls"
+                        }))
+
+                        async for message in ws:
+                            if isinstance(message, bytes):
+                                if self.in_call and self.output_stream:
+                                    try:
+                                        to_play = message
+                                        if self.actual_output_rate != SAMPLE_RATE:
+                                            to_play = resample_pcm16(message, SAMPLE_RATE, self.actual_output_rate)
+                                        self.output_stream.write(to_play)
+                                    except Exception as e:
+                                        logger.debug(f"Speaker write error: {e}")
+                            else:
                                 try:
-                                    self.output_stream.write(message)
-                                except Exception as e:
-                                    logger.debug(f"Speaker write error: {e}")
-                        else:
-                            try:
-                                msg = json.loads(message)
-                                await self.handle_call(msg, ws)
-                            except json.JSONDecodeError:
-                                pass
+                                    msg = json.loads(message)
+                                    await self.handle_call(msg, ws)
+                                except json.JSONDecodeError:
+                                    pass
 
-            except (websockets.ConnectionClosed, ConnectionRefusedError, OSError) as e:
-                logger.warning(f"Connection lost ({e}). Reconnecting in 3 seconds...")
-                self.in_call = False
-                self.stop_audio_streams()
+                except (websockets.ConnectionClosed, websockets.WebSocketException, ConnectionRefusedError, OSError, Exception) as e:
+                    logger.warning(f"{proto_name} connection attempt failed: {e}")
+                    self.in_call = False
+                    self.stop_audio_streams()
+
+                if connected:
+                    break
+
+            if self.running:
+                logger.info("Will attempt reconnection in 3 seconds...")
                 await asyncio.sleep(3)
 
     def shutdown(self):
@@ -257,4 +339,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("Voice companion shut down.")
         companion.stop_audio_streams()
-
