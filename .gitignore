@@ -17,6 +17,11 @@ __pycache__/
 *.sqlite
 *.sqlite3
 
+# SSL Certificates
+*.pem
+*.crt
+*.key
+
 # IDE / OS files
 .DS_Store
 Thumbs.db

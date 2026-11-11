@@ -2625,8 +2625,29 @@
         sub.textContent = 'Ringing living room companion...';
 
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          callState.localStream = stream;
+          let stream = null;
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (micErr) {
+              console.warn('Microphone permission denied', micErr);
+            }
+          } else if (navigator.getUserMedia) {
+            try {
+              stream = await new Promise((resolve, reject) => navigator.getUserMedia({ audio: true }, resolve, reject));
+            } catch (_) {}
+          } else if (navigator.webkitGetUserMedia) {
+            try {
+              stream = await new Promise((resolve, reject) => navigator.webkitGetUserMedia({ audio: true }, resolve, reject));
+            } catch (_) {}
+          }
+
+          if (stream) {
+            callState.localStream = stream;
+          } else {
+            console.warn('Microphone requires a Secure Context (HTTPS or localhost).');
+            toast('Notice: Mic requires HTTPS or localhost. Connecting in Speaker mode...');
+          }
 
           let tokenData = null;
           try {
@@ -2638,7 +2659,7 @@
           if (tokenData && tokenData.enabled && typeof LivekitClient !== 'undefined') {
             const room = new LivekitClient.Room();
             await room.connect(tokenData.url, tokenData.token);
-            await room.localParticipant.setMicrophoneEnabled(true);
+            if (stream) await room.localParticipant.setMicrophoneEnabled(true);
             room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
               if (track.kind === LivekitClient.Track.Kind.Audio) {
                 track.attach($('#companionAudio'));
@@ -2654,7 +2675,9 @@
             });
             callState.peerConnection = pc;
 
-            stream.getTracks().forEach(track => pc.addTrack(track, stream));
+            if (stream) {
+              stream.getTracks().forEach(track => pc.addTrack(track, stream));
+            }
 
             pc.ontrack = (event) => {
               const audioEl = $('#companionAudio');
@@ -2673,7 +2696,7 @@
               }
             };
 
-            const offer = await pc.createOffer();
+            const offer = await pc.createOffer({ offerToReceiveAudio: true });
             await pc.setLocalDescription(offer);
 
             if (callState.ws && callState.ws.readyState === WebSocket.OPEN) {
