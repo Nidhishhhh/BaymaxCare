@@ -70,11 +70,19 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            # Echo or process incoming commands from companion client
             try:
                 payload = json.loads(data)
-                if payload.get("type") == "ping":
+                msg_type = payload.get("type")
+                if msg_type == "ping":
                     await websocket.send_json({"type": "pong", "time": datetime.utcnow().isoformat()})
+                elif msg_type in ("call_invite", "call_accept", "call_end", "call_busy", "webrtc_offer", "webrtc_answer", "webrtc_ice"):
+                    # Broadcast WebRTC call signaling to other connected devices
+                    for conn in list(ws_manager.active_connections):
+                        if conn != websocket:
+                            try:
+                                await conn.send_text(data)
+                            except Exception:
+                                pass
             except Exception:
                 pass
     except WebSocketDisconnect:
@@ -216,6 +224,43 @@ def login_doctor(payload: DoctorLoginRequest, db: Session = Depends(get_db)):
         "hospital": hosp,
         "license": lic,
         "specialty": spec
+    }
+
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "").strip()
+LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "").strip()
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "").strip()
+
+@app.get("/api/livekit/token")
+def get_livekit_token(room: str = "baymaxcare-room-P-1042", identity: str = "user", name: str = "User"):
+    """Returns a signed LiveKit token if configured, or signals WebRTC P2P mode."""
+    if LIVEKIT_URL and LIVEKIT_API_KEY and LIVEKIT_API_SECRET:
+        try:
+            from livekit.api import AccessToken, VideoGrants
+            token = AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET) \
+                .with_identity(identity) \
+                .with_name(name) \
+                .with_grants(VideoGrants(
+                    room_join=True,
+                    room=room,
+                    can_publish=True,
+                    can_subscribe=True
+                )).to_jwt()
+            return {
+                "enabled": True,
+                "url": LIVEKIT_URL,
+                "token": token,
+                "room": room,
+                "identity": identity
+            }
+        except Exception as e:
+            logger.warning(f"Error generating LiveKit token: {e}")
+
+    return {
+        "enabled": False,
+        "mode": "webrtc_p2p",
+        "room": room,
+        "identity": identity,
+        "ws_url": "/ws/stream"
     }
 
 @app.get("/api/patients")

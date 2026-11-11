@@ -4,6 +4,7 @@
 <head>
   <meta charset=utf8>
   <meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <style>
     :root {
       color-scheme: light;
@@ -1565,6 +1566,106 @@
       opacity: .8
     }
 
+    /* 2-Way Voice Call Widget */
+    .voice-call-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      padding: 10px 14px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      transition: all 0.25s ease;
+    }
+    .voice-call-bar.active {
+      background: rgba(13, 148, 136, 0.12);
+      border-color: var(--teal);
+      box-shadow: 0 0 16px rgba(13, 148, 136, 0.2);
+    }
+    .call-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .call-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .voice-call-bar.active .call-avatar {
+      background: var(--teal);
+      color: #fff;
+      animation: callPulse 1.5s infinite;
+    }
+    @keyframes callPulse {
+      0% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0.6); }
+      70% { box-shadow: 0 0 0 10px rgba(13, 148, 136, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); }
+    }
+    .call-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fg);
+    }
+    .call-status-sub {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+    .call-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .call-start-btn {
+      background: var(--teal);
+      color: #fff;
+      border: 0;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .call-start-btn:hover {
+      filter: brightness(1.1);
+    }
+    .call-mute-btn {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--fg);
+      font-size: 11.5px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .call-hangup-btn {
+      background: #ef4444;
+      color: #fff;
+      border: 0;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .call-hangup-btn:hover {
+      background: #dc2626;
+    }
+
     /* voice */
     .tx {
       list-style: none;
@@ -2765,6 +2866,29 @@
           <div class="card-head">
             <h2 id="voiceH">Voice companion</h2><span class="vstat">Ready</span>
           </div>
+
+          <!-- 2-Way Live Voice Call Widget -->
+          <div class="voice-call-bar" id="voiceCallBar">
+            <div class="call-info">
+              <div class="call-avatar" id="callAvatar">📞</div>
+              <div>
+                <div class="call-title" id="callTitle">2-Way Voice Call</div>
+                <div class="call-status-sub" id="callStatusSub">Connect directly to living room speaker & mic</div>
+              </div>
+            </div>
+            <div class="call-actions">
+              <button type="button" class="btn call-start-btn" id="btnStartCall">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                Call Companion
+              </button>
+              <button type="button" class="btn call-mute-btn" id="btnMuteCall" hidden>🎙️ Mute</button>
+              <button type="button" class="btn call-hangup-btn" id="btnEndCall" hidden>🔴 End Call</button>
+            </div>
+          </div>
+          <audio id="companionAudio" autoplay></audio>
+
           <ul class="tx" id="tx" role="log" aria-live="polite"></ul>
           <div class="chips" id="chips">
             <button class="chip" type="button">I feel dizzy</button>
@@ -3440,6 +3564,214 @@
       $('#vform').addEventListener('submit', e => { e.preventDefault(); const i = $('#vtext'); utter(i.value); i.value = '' });
       $$('[data-act-mode]').forEach(b => b.addEventListener('click', () => { S.actMode = b.dataset.actMode; $$('[data-act-mode]').forEach(x => x.setAttribute('aria-pressed', x === b)); drawActivity() }));
       $$('[data-ppg]').forEach(b => b.addEventListener('click', () => { S.ppgMode = b.dataset.ppg; $$('[data-ppg]').forEach(x => x.setAttribute('aria-pressed', x === b)); drawPPG(); }));
+
+      /* 2-Way Voice Calling (WebRTC / LiveKit) */
+      const callState = {
+        active: false,
+        muted: false,
+        timerInterval: null,
+        seconds: 0,
+        peerConnection: null,
+        localStream: null,
+        ws: null,
+        livekitRoom: null
+      };
+
+      function initCallSignaling() {
+        const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host || '127.0.0.1:8000';
+        const wsUrl = `${proto}//${host}/ws/stream`;
+        try {
+          callState.ws = new WebSocket(wsUrl);
+          callState.ws.onmessage = async (evt) => {
+            try {
+              const msg = JSON.parse(evt.data);
+              handleCallSignaling(msg);
+            } catch (e) {}
+          };
+          callState.ws.onclose = () => {
+            setTimeout(initCallSignaling, 3000);
+          };
+        } catch (e) {
+          console.warn('Call signaling websocket unavailable', e);
+        }
+      }
+
+      async function handleCallSignaling(msg) {
+        if (msg.type === 'call_accept' && callState.active) {
+          if ($('#callStatusSub')) $('#callStatusSub').textContent = 'Connected (2-Way Live Audio) · 00:00';
+          startCallTimer();
+          toast('In-home companion connected and microphone is live');
+        } else if (msg.type === 'call_end' && callState.active) {
+          endVoiceCall(false);
+          toast('Call ended by in-home companion');
+        } else if (msg.type === 'webrtc_answer' && callState.peerConnection) {
+          await callState.peerConnection.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+        } else if (msg.type === 'webrtc_ice' && callState.peerConnection) {
+          if (msg.candidate) {
+            await callState.peerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate));
+          }
+        }
+      }
+
+      async function startVoiceCall() {
+        if (callState.active) return;
+        const btnStart = $('#btnStartCall');
+        const btnMute = $('#btnMuteCall');
+        const btnEnd = $('#btnEndCall');
+        const bar = $('#voiceCallBar');
+        const sub = $('#callStatusSub');
+
+        btnStart.disabled = true;
+        btnStart.textContent = 'Calling...';
+        sub.textContent = 'Ringing living room companion...';
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          callState.localStream = stream;
+
+          let tokenData = null;
+          try {
+            const pCode = (PATIENT_DATA && PATIENT_DATA.id) || 'P-1042';
+            const res = await fetch(`${getApiBaseUrl()}/livekit/token?room=baymaxcare-${pCode}&identity=caller_doctor`);
+            if (res.ok) tokenData = await res.json();
+          } catch (_) {}
+
+          if (tokenData && tokenData.enabled && typeof LivekitClient !== 'undefined') {
+            const room = new LivekitClient.Room();
+            await room.connect(tokenData.url, tokenData.token);
+            await room.localParticipant.setMicrophoneEnabled(true);
+            room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
+              if (track.kind === LivekitClient.Track.Kind.Audio) {
+                track.attach($('#companionAudio'));
+              }
+            });
+            callState.livekitRoom = room;
+          } else {
+            const pc = new RTCPeerConnection({
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+              ]
+            });
+            callState.peerConnection = pc;
+
+            stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+            pc.ontrack = (event) => {
+              const audioEl = $('#companionAudio');
+              if (audioEl && event.streams[0]) {
+                audioEl.srcObject = event.streams[0];
+                audioEl.play().catch(() => {});
+              }
+            };
+
+            pc.onicecandidate = (event) => {
+              if (event.candidate && callState.ws && callState.ws.readyState === WebSocket.OPEN) {
+                callState.ws.send(JSON.stringify({
+                  type: 'webrtc_ice',
+                  candidate: event.candidate
+                }));
+              }
+            };
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            if (callState.ws && callState.ws.readyState === WebSocket.OPEN) {
+              callState.ws.send(JSON.stringify({
+                type: 'call_invite',
+                caller_name: sessionStorage.getItem('baymaxcare_doctor_name') || 'Dr. Sarah Jenkins',
+                sdp: offer
+              }));
+            }
+          }
+
+          callState.active = true;
+          bar.classList.add('active');
+          btnStart.hidden = true;
+          btnMute.hidden = false;
+          btnEnd.hidden = false;
+          sub.textContent = 'Calling in-home companion...';
+          toast('Ringing living room companion...');
+
+          setTimeout(() => {
+            if (callState.active && !callState.timerInterval) {
+              startCallTimer();
+              sub.textContent = 'Connected (2-Way Live Audio)';
+            }
+          }, 1500);
+
+        } catch (err) {
+          console.error('Call setup error', err);
+          btnStart.disabled = false;
+          btnStart.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call Companion';
+          sub.textContent = 'Microphone access required to make voice calls.';
+          toast('Could not access microphone: ' + err.message);
+        }
+      }
+
+      function toggleMute() {
+        if (!callState.active || !callState.localStream) return;
+        callState.muted = !callState.muted;
+        callState.localStream.getAudioTracks().forEach(t => t.enabled = !callState.muted);
+        $('#btnMuteCall').textContent = callState.muted ? '🔇 Unmute' : '🎙️ Mute';
+        toast(callState.muted ? 'Microphone muted' : 'Microphone unmuted');
+      }
+
+      function startCallTimer() {
+        if (callState.timerInterval) clearInterval(callState.timerInterval);
+        callState.seconds = 0;
+        callState.timerInterval = setInterval(() => {
+          callState.seconds++;
+          const m = String(Math.floor(callState.seconds / 60)).padStart(2, '0');
+          const s = String(callState.seconds % 60).padStart(2, '0');
+          if ($('#callStatusSub')) $('#callStatusSub').textContent = `In Call · ${m}:${s}`;
+        }, 1000);
+      }
+
+      function endVoiceCall(notifyRemote = true) {
+        if (!callState.active) return;
+        if (callState.timerInterval) {
+          clearInterval(callState.timerInterval);
+          callState.timerInterval = null;
+        }
+        if (callState.localStream) {
+          callState.localStream.getTracks().forEach(t => t.stop());
+          callState.localStream = null;
+        }
+        if (callState.peerConnection) {
+          callState.peerConnection.close();
+          callState.peerConnection = null;
+        }
+        if (callState.livekitRoom) {
+          callState.livekitRoom.disconnect();
+          callState.livekitRoom = null;
+        }
+
+        if (notifyRemote && callState.ws && callState.ws.readyState === WebSocket.OPEN) {
+          callState.ws.send(JSON.stringify({
+            type: 'call_end'
+          }));
+        }
+
+        callState.active = false;
+        callState.muted = false;
+        $('#voiceCallBar').classList.remove('active');
+        $('#btnStartCall').hidden = false;
+        $('#btnStartCall').disabled = false;
+        $('#btnStartCall').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call Companion';
+        $('#btnMuteCall').hidden = true;
+        $('#btnMuteCall').textContent = '🎙️ Mute';
+        $('#btnEndCall').hidden = true;
+        $('#callStatusSub').textContent = 'Connect directly to living room speaker & mic';
+        toast('Call ended');
+      }
+
+      initCallSignaling();
+      if ($('#btnStartCall')) $('#btnStartCall').addEventListener('click', startVoiceCall);
+      if ($('#btnMuteCall')) $('#btnMuteCall').addEventListener('click', toggleMute);
+      if ($('#btnEndCall')) $('#btnEndCall').addEventListener('click', () => endVoiceCall(true));
 
       /* medication add form events */
       $('#openAddMedBtn').addEventListener('click', () => {
