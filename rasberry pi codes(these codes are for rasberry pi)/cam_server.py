@@ -56,5 +56,24 @@ def add_cors_headers(response):
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     return response
 
+_server_thread = None
+
+def start_in_background(host='0.0.0.0', port=5000):
+    """Starts the camera streaming server in a background daemon thread."""
+    import threading
+    global _server_thread
+    _server_thread = threading.Thread(
+        target=lambda: app.run(host=host, port=port, threaded=True, use_reloader=False),
+        daemon=True
+    )
+    _server_thread.start()
+    print(f"[Camera] Live stream server running in background on port {port}")
+    return _server_thread
+
+def shutdown():
+    """Stops camera streaming."""
+    stop_camera()
+    print("[Camera] Stopped camera capture.")
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, threaded=True)

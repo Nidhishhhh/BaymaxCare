@@ -41,9 +41,10 @@ except ImportError:
 
 
 class BaymaxVoiceCompanion:
-    def __init__(self, host=SERVER_HOST, port=SERVER_PORT, patient_code=PATIENT_CODE):
+    def __init__(self, host=SERVER_HOST, port=SERVER_PORT, patient_code=PATIENT_CODE, on_call_status_change=None):
         self.ws_url = f"ws://{host}:{port}/ws/stream"
         self.patient_code = patient_code
+        self.on_call_status_change = on_call_status_change
         self.in_call = False
         self.current_caller = None
         self.ws = None
@@ -51,6 +52,7 @@ class BaymaxVoiceCompanion:
         self.input_stream = None
         self.output_stream = None
         self.stop_audio = threading.Event()
+        self.running = True
 
     def start_audio_streams(self):
         """Starts microphone recording and speaker playback streams."""
@@ -142,6 +144,9 @@ class BaymaxVoiceCompanion:
             # Auto-accept after 1 second chime
             await asyncio.sleep(1)
             self.in_call = True
+            if self.on_call_status_change:
+                try: self.on_call_status_change(True)
+                except Exception: pass
             self.stop_audio.clear()
             self.start_audio_streams()
 
@@ -161,6 +166,9 @@ class BaymaxVoiceCompanion:
         elif m_type == "call_end":
             logger.info("Call ended by remote caller.")
             self.in_call = False
+            if self.on_call_status_change:
+                try: self.on_call_status_change(False)
+                except Exception: pass
             self.stop_audio_streams()
             self.play_chime("hangup")
 
@@ -205,6 +213,35 @@ class BaymaxVoiceCompanion:
                 self.stop_audio_streams()
                 await asyncio.sleep(3)
 
+    def shutdown(self):
+        """Cleanly stops client and streams."""
+        self.running = False
+        self.in_call = False
+        self.stop_audio_streams()
+        logger.info("[VoiceCall] Companion voice client stopped.")
+
+
+_companion_instance = None
+_companion_thread = None
+
+def start_in_background(host=SERVER_HOST, port=SERVER_PORT, patient_code=PATIENT_CODE, on_call_status_change=None):
+    """Starts the 2-Way Voice Call Companion in a background daemon thread."""
+    global _companion_instance, _companion_thread
+
+    def _thread_target():
+        asyncio.run(_companion_instance.run())
+
+    _companion_instance = BaymaxVoiceCompanion(
+        host=host,
+        port=port,
+        patient_code=patient_code,
+        on_call_status_change=on_call_status_change
+    )
+    _companion_thread = threading.Thread(target=_thread_target, daemon=True)
+    _companion_thread.start()
+    logger.info(f"[VoiceCall] 2-Way Voice Calling listening in background for patient {patient_code}")
+    return _companion_instance
+
 
 if __name__ == "__main__":
     companion = BaymaxVoiceCompanion()
@@ -213,3 +250,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("Voice companion shut down.")
         companion.stop_audio_streams()
+
