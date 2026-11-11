@@ -3565,17 +3565,59 @@
       $$('[data-act-mode]').forEach(b => b.addEventListener('click', () => { S.actMode = b.dataset.actMode; $$('[data-act-mode]').forEach(x => x.setAttribute('aria-pressed', x === b)); drawActivity() }));
       $$('[data-ppg]').forEach(b => b.addEventListener('click', () => { S.ppgMode = b.dataset.ppg; $$('[data-ppg]').forEach(x => x.setAttribute('aria-pressed', x === b)); drawPPG(); }));
 
-      /* 2-Way Voice Calling (WebRTC / LiveKit) */
+      /* 2-Way Voice Calling (High-Performance 16kHz PCM WebSocket Audio) */
       const callState = {
         active: false,
         muted: false,
         timerInterval: null,
         seconds: 0,
-        peerConnection: null,
         localStream: null,
+        audioContext: null,
+        audioProcessor: null,
         ws: null,
+        peerConnection: null,
         livekitRoom: null
       };
+
+      let playbackAudioCtx = null;
+      let nextPlayTime = 0;
+
+      function playIncomingPcm(arrayBuffer) {
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          if (!playbackAudioCtx || playbackAudioCtx.state === 'closed') {
+            playbackAudioCtx = new AudioContextClass({ sampleRate: 16000 });
+            nextPlayTime = playbackAudioCtx.currentTime;
+          }
+          if (playbackAudioCtx.state === 'suspended') {
+            playbackAudioCtx.resume();
+          }
+
+          const int16 = new Int16Array(arrayBuffer);
+          if (int16.length === 0) return;
+          const float32 = new Float32Array(int16.length);
+          for (let i = 0; i < int16.length; i++) {
+            float32[i] = int16[i] / 32768.0;
+          }
+
+          const audioBuffer = playbackAudioCtx.createBuffer(1, float32.length, 16000);
+          audioBuffer.getChannelData(0).set(float32);
+
+          const source = playbackAudioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(playbackAudioCtx.destination);
+
+          const now = playbackAudioCtx.currentTime;
+          if (nextPlayTime < now) {
+            nextPlayTime = now + 0.04; // 40ms jitter buffer
+          }
+          source.start(nextPlayTime);
+          nextPlayTime += audioBuffer.duration;
+        } catch (err) {
+          console.debug('Audio playback error', err);
+        }
+      }
 
       function initCallSignaling() {
         const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -3583,7 +3625,15 @@
         const wsUrl = `${proto}//${host}/ws/stream`;
         try {
           callState.ws = new WebSocket(wsUrl);
+          callState.ws.binaryType = 'arraybuffer';
           callState.ws.onmessage = async (evt) => {
+            // Handle raw PCM binary audio chunk from Raspberry Pi
+            if (evt.data instanceof ArrayBuffer) {
+              if (callState.active) {
+                playIncomingPcm(evt.data);
+              }
+              return;
+            }
             try {
               const msg = JSON.parse(evt.data);
               handleCallSignaling(msg);
@@ -3646,68 +3696,53 @@
 
           if (stream) {
             callState.localStream = stream;
+            // Setup Web Audio real-time PCM streamer (16kHz 16-bit mono)
+            try {
+              const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+              if (AudioContextClass) {
+                const audioCtx = new AudioContextClass({ sampleRate: 16000 });
+                callState.audioContext = audioCtx;
+                if (audioCtx.state === 'suspended') {
+                  await audioCtx.resume();
+                }
+                const source = audioCtx.createMediaStreamSource(stream);
+                const processor = audioCtx.createScriptProcessor(2048, 1, 1);
+                callState.audioProcessor = processor;
+
+                processor.onaudioprocess = (e) => {
+                  if (!callState.active || callState.muted) return;
+                  if (!callState.ws || callState.ws.readyState !== WebSocket.OPEN) return;
+                  const inputData = e.inputBuffer.getChannelData(0);
+                  const pcm16 = new Int16Array(inputData.length);
+                  for (let i = 0; i < inputData.length; i++) {
+                    const s = Math.max(-1, Math.min(1, inputData[i]));
+                    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                  }
+                  callState.ws.send(pcm16.buffer);
+                };
+
+                const zeroGain = audioCtx.createGain();
+                zeroGain.gain.value = 0;
+                source.connect(processor);
+                processor.connect(zeroGain);
+                zeroGain.connect(audioCtx.destination);
+              }
+            } catch (audioErr) {
+              console.warn('Web Audio capture setup error', audioErr);
+            }
           } else {
             console.warn('Microphone requires a Secure Context (HTTPS or localhost).');
             toast('Notice: Mic requires HTTPS or localhost. Connecting in Speaker mode...');
           }
 
-          let tokenData = null;
-          try {
-            const pCode = (PATIENT_DATA && PATIENT_DATA.id) || 'P-1042';
-            const res = await fetch(`${getApiBaseUrl()}/livekit/token?room=baymaxcare-${pCode}&identity=caller_doctor`);
-            if (res.ok) tokenData = await res.json();
-          } catch (_) {}
-
-          if (tokenData && tokenData.enabled && typeof LivekitClient !== 'undefined') {
-            const room = new LivekitClient.Room();
-            await room.connect(tokenData.url, tokenData.token);
-            if (stream) await room.localParticipant.setMicrophoneEnabled(true);
-            room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
-              if (track.kind === LivekitClient.Track.Kind.Audio) {
-                track.attach($('#companionAudio'));
-              }
-            });
-            callState.livekitRoom = room;
-          } else {
-            const pc = new RTCPeerConnection({
-              iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-              ]
-            });
-            callState.peerConnection = pc;
-
-            if (stream) {
-              stream.getTracks().forEach(track => pc.addTrack(track, stream));
-            }
-
-            pc.ontrack = (event) => {
-              const audioEl = $('#companionAudio');
-              if (audioEl && event.streams[0]) {
-                audioEl.srcObject = event.streams[0];
-                audioEl.play().catch(() => {});
-              }
-            };
-
-            pc.onicecandidate = (event) => {
-              if (event.candidate && callState.ws && callState.ws.readyState === WebSocket.OPEN) {
-                callState.ws.send(JSON.stringify({
-                  type: 'webrtc_ice',
-                  candidate: event.candidate
-                }));
-              }
-            };
-
-            const offer = await pc.createOffer({ offerToReceiveAudio: true });
-            await pc.setLocalDescription(offer);
-
-            if (callState.ws && callState.ws.readyState === WebSocket.OPEN) {
-              callState.ws.send(JSON.stringify({
-                type: 'call_invite',
-                caller_name: sessionStorage.getItem('baymaxcare_doctor_name') || 'Dr. Sarah Jenkins',
-                sdp: offer
-              }));
-            }
+          // Send call invite to Raspberry Pi companion
+          if (callState.ws && callState.ws.readyState === WebSocket.OPEN) {
+            const pCode = (typeof PATIENT_DATA !== 'undefined' && PATIENT_DATA && PATIENT_DATA.id) || 'P-1042';
+            callState.ws.send(JSON.stringify({
+              type: 'call_invite',
+              caller_name: sessionStorage.getItem('baymaxcare_doctor_name') || 'Dr. Sarah Jenkins',
+              patient_code: pCode
+            }));
           }
 
           callState.active = true;
@@ -3735,9 +3770,11 @@
       }
 
       function toggleMute() {
-        if (!callState.active || !callState.localStream) return;
+        if (!callState.active) return;
         callState.muted = !callState.muted;
-        callState.localStream.getAudioTracks().forEach(t => t.enabled = !callState.muted);
+        if (callState.localStream) {
+          callState.localStream.getAudioTracks().forEach(t => t.enabled = !callState.muted);
+        }
         $('#btnMuteCall').textContent = callState.muted ? '🔇 Unmute' : '🎙️ Mute';
         toast(callState.muted ? 'Microphone muted' : 'Microphone unmuted');
       }
@@ -3758,6 +3795,19 @@
         if (callState.timerInterval) {
           clearInterval(callState.timerInterval);
           callState.timerInterval = null;
+        }
+        if (callState.audioProcessor) {
+          try { callState.audioProcessor.disconnect(); } catch (_) {}
+          callState.audioProcessor = null;
+        }
+        if (callState.audioContext) {
+          try { callState.audioContext.close(); } catch (_) {}
+          callState.audioContext = null;
+        }
+        if (playbackAudioCtx) {
+          try { playbackAudioCtx.close(); } catch (_) {}
+          playbackAudioCtx = null;
+          nextPlayTime = 0;
         }
         if (callState.localStream) {
           callState.localStream.getTracks().forEach(t => t.stop());

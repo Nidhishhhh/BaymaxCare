@@ -114,22 +114,17 @@ class BaymaxVoiceCompanion:
             pass
 
     async def mic_sender(self, websocket):
-        """Captures microphone and sends audio frames to the caller."""
+        """Captures microphone and sends real-time binary PCM audio chunks."""
         logger.info("Started microphone stream sender...")
         while self.in_call and not self.stop_audio.is_set():
             if self.input_stream:
                 try:
                     data = self.input_stream.read(CHUNK, exception_on_overflow=False)
-                    payload = {
-                        "type": "audio_frame",
-                        "sender": DEVICE_IDENTITY,
-                        "patient_code": self.patient_code,
-                        "raw_bytes": list(data[:64])  # Sample chunk
-                    }
-                    await websocket.send(json.dumps(payload))
+                    if data:
+                        await websocket.send(data)
                 except Exception as e:
                     logger.debug(f"Audio read error: {e}")
-            await asyncio.sleep(0.04)
+            await asyncio.sleep(0.005)
 
     async def handle_call(self, msg, websocket):
         """Processes call signaling messages."""
@@ -201,11 +196,18 @@ class BaymaxVoiceCompanion:
                     }))
 
                     async for message in ws:
-                        try:
-                            msg = json.loads(message)
-                            await self.handle_call(msg, ws)
-                        except json.JSONDecodeError:
-                            pass
+                        if isinstance(message, bytes):
+                            if self.in_call and self.output_stream:
+                                try:
+                                    self.output_stream.write(message)
+                                except Exception as e:
+                                    logger.debug(f"Speaker write error: {e}")
+                        else:
+                            try:
+                                msg = json.loads(message)
+                                await self.handle_call(msg, ws)
+                            except json.JSONDecodeError:
+                                pass
 
             except (websockets.ConnectionClosed, ConnectionRefusedError, OSError) as e:
                 logger.warning(f"Connection lost ({e}). Reconnecting in 3 seconds...")
@@ -218,6 +220,11 @@ class BaymaxVoiceCompanion:
         self.running = False
         self.in_call = False
         self.stop_audio_streams()
+        if self.audio:
+            try:
+                self.audio.terminate()
+            except Exception:
+                pass
         logger.info("[VoiceCall] Companion voice client stopped.")
 
 

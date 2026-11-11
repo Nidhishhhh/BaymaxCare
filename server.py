@@ -69,22 +69,33 @@ async def websocket_endpoint(websocket: WebSocket):
     await ws_manager.connect(websocket)
     try:
         while True:
-            data = await websocket.receive_text()
-            try:
-                payload = json.loads(data)
-                msg_type = payload.get("type")
-                if msg_type == "ping":
-                    await websocket.send_json({"type": "pong", "time": datetime.utcnow().isoformat()})
-                elif msg_type in ("call_invite", "call_accept", "call_end", "call_busy", "webrtc_offer", "webrtc_answer", "webrtc_ice"):
-                    # Broadcast WebRTC call signaling to other connected devices
-                    for conn in list(ws_manager.active_connections):
-                        if conn != websocket:
-                            try:
-                                await conn.send_text(data)
-                            except Exception:
-                                pass
-            except Exception:
-                pass
+            message = await websocket.receive()
+            # 1. Handle raw binary audio chunks (bidirectional real-time voice streaming)
+            if "bytes" in message and message["bytes"]:
+                binary_data = message["bytes"]
+                for conn in list(ws_manager.active_connections):
+                    if conn != websocket:
+                        try:
+                            await conn.send_bytes(binary_data)
+                        except Exception:
+                            pass
+            # 2. Handle text signaling (calls, alerts, ping/pong)
+            elif "text" in message and message["text"]:
+                data = message["text"]
+                try:
+                    payload = json.loads(data)
+                    msg_type = payload.get("type")
+                    if msg_type == "ping":
+                        await websocket.send_json({"type": "pong", "time": datetime.utcnow().isoformat()})
+                    elif msg_type in ("call_invite", "call_accept", "call_end", "call_busy", "webrtc_offer", "webrtc_answer", "webrtc_ice"):
+                        for conn in list(ws_manager.active_connections):
+                            if conn != websocket:
+                                try:
+                                    await conn.send_text(data)
+                                except Exception:
+                                    pass
+                except Exception:
+                    pass
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
 
