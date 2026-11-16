@@ -212,9 +212,11 @@ bool mpuRead(float &ax, float &ay, float &az, float &gx, float &gy, float &gz) {
 // ====================================================================================
 void setup() {
   Serial.begin(115200);
+  Serial.setTxTimeoutMs(0); // Critical: Prevents ESP32-C3 from freezing when not connected to PC USB!
+  
   unsigned long tSerial = millis();
-  while (!Serial && millis() - tSerial < 5000) delay(10);  // wait up to 5 s for USB serial monitor
-  delay(500);
+  while (!Serial && millis() - tSerial < 2000) delay(10);
+  delay(200);
 
   Serial.println("\n--- ESP32-C3 Fall Detector Initializing ---");
 
