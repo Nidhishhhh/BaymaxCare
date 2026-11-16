@@ -9,6 +9,15 @@
     ESP32-C3 GND     -> MPU6050 GND
 
   Required Library: "PubSubClient" by Nick O'Leary
+
+  Changes from the previous version:
+    - WiFi.setTxPower(8.5 dBm) before WiFi.begin()  (the fix for your board)
+    - Removed the boot-time scan that called WiFi.disconnect(true), which switched
+      the radio off right before connecting. Scan is now optional (DO_SCAN_ON_BOOT).
+    - WiFi event handler prints the real disconnect reason code.
+    - Non-blocking WiFi auto-reconnect in loop().
+    - Fixed I2C byte-order bug: (Wire.read() << 8) | Wire.read() has unspecified
+      evaluation order in C++, so bytes could be swapped. Now read explicitly.
  ======================================================================================
 */
 
@@ -19,10 +28,11 @@
 // ====================================================================================
 // 1. WI-FI & MQTT SETTINGS (Update these!)
 // ====================================================================================
-const char *WIFI_SSID     = "YOUR_WIFI_NAME";        // <--- Your 2.4 GHz Wi-Fi Name
-const char *WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";    // <--- Your Wi-Fi Password
+const char *WIFI_SSID     = "NidhishJioAir";        // <--- Your 2.4 GHz Wi-Fi Name
+const char *WIFI_PASSWORD = "Nidhish@322005";    // <--- Your Wi-Fi Password
 
-// MQTT Broker (Public cloud broker: works across 5GHz, 2.4GHz, and different Wi-Fi networks!)
+#define DO_SCAN_ON_BOOT 0   // set to 1 to print nearby networks at startup
+
 const char *MQTT_BROKER   = "broker.hivemq.com";
 const int   MQTT_PORT     = 1883;
 const char *MQTT_TOPIC    = "baymaxcare/P-1042/fall";
@@ -37,15 +47,15 @@ PubSubClient mqttClient(espClient);
 #define SCL_PIN 9
 #define MPU_ADDR 0x68
 
-const float FREEFALL_G           = 0.45;     // Weightlessness (< 0.45g)
-const unsigned long FREEFALL_MIN_MS = 40;    // Min freefall duration
-const float IMPACT_G             = 2.50;     // Impact shock (> 2.5g)
-const unsigned long IMPACT_WINDOW_MS = 1000; // Window between freefall & impact
-const unsigned long SETTLE_MS    = 500;      // Settle time
-const float STILL_TOL_G          = 0.25;     // Rest acceleration tolerance
-const float STILL_GYRO_DPS       = 40.0;     // Rest gyro tolerance
-const unsigned long INACTIVE_TIME_MS = 2000; // Immobility duration (2s)
-const unsigned long COOLDOWN_MS  = 5000;     // Cooldown between alerts
+const float FREEFALL_G           = 0.45;
+const unsigned long FREEFALL_MIN_MS = 40;
+const float IMPACT_G             = 2.50;
+const unsigned long IMPACT_WINDOW_MS = 1000;
+const unsigned long SETTLE_MS    = 500;
+const float STILL_TOL_G          = 0.25;
+const float STILL_GYRO_DPS       = 40.0;
+const unsigned long INACTIVE_TIME_MS = 2000;
+const unsigned long COOLDOWN_MS  = 5000;
 
 const float ACCEL_LSB_PER_G      = 4096.0;   // +-8 g scale
 const float GYRO_LSB_PER_DPS     = 65.5;     // +-500 dps scale
@@ -58,54 +68,62 @@ unsigned long stillSince = 0;
 unsigned long lastAlert  = 0;
 unsigned long lastSample = 0;
 unsigned long lastMqttRetry = 0;
+unsigned long lastWifiRetry = 0;
 
 // ====================================================================================
 // 3. WI-FI & MQTT CONNECTION
 // ====================================================================================
-const char* getWiFiStatusName(wl_status_t status) {
-  switch (status) {
-    case WL_IDLE_STATUS:     return "IDLE";
-    case WL_NO_SSID_AVAIL:   return "SSID NOT FOUND (Hotspot not broadcasting on 2.4 GHz)";
-    case WL_SCAN_COMPLETED:  return "SCAN COMPLETED";
-    case WL_CONNECTED:       return "CONNECTED";
-    case WL_CONNECT_FAILED:  return "CONNECT FAILED (Check password or security)";
-    case WL_CONNECTION_LOST: return "CONNECTION LOST";
-    case WL_DISCONNECTED:    return "DISCONNECTED / TIMEOUT";
-    default:                 return "UNKNOWN";
+void onWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
+  switch (event) {
+    case ARDUINO_EVENT_WIFI_STA_CONNECTED:
+      Serial.println("WiFi: associated with router");
+      break;
+    case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+      Serial.print("WiFi: got IP ");
+      Serial.println(WiFi.localIP());
+      break;
+    case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+      Serial.printf("WiFi: disconnected, reason code %d\n",
+                    info.wifi_sta_disconnected.reason);
+      break;
+    default:
+      break;
   }
 }
 
 void scanNearbyNetworks() {
-  Serial.println("\n--- Scanning for all nearby 2.4 GHz Wi-Fi networks ---");
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect(true);
-  delay(300);
-
-  int n = WiFi.scanNetworks(false, true); // blocking synchronous scan
+  Serial.println("\n--- Scanning nearby networks ---");
+  int n = WiFi.scanNetworks();
   if (n <= 0) {
-    Serial.printf("❌ No networks found (scan result: %d).\n", n);
+    Serial.printf("No networks found (result: %d)\n", n);
   } else {
-    Serial.printf("✔ Found %d networks:\n", n);
     for (int i = 0; i < n; ++i) {
-      Serial.printf("  [%d] \"%s\" | Signal: %d dBm | Ch: %d\n", 
+      Serial.printf("  [%d] \"%s\" | %d dBm | ch %d\n",
                     i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i));
     }
   }
-  WiFi.scanDelete(); // Critical: frees scan memory so WiFi.begin can connect!
-  delay(200);
-  Serial.println("-------------------------------------------------------\n");
+  WiFi.scanDelete();
+  Serial.println("--------------------------------\n");
+}
+
+void startWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+  WiFi.setTxPower(WIFI_POWER_8_5dBm);   // KEY FIX: full power fails on many C3 boards
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
 
 void setupWiFi() {
-  // First scan to see what networks exist
-  scanNearbyNetworks();
-
+  WiFi.persistent(false);
+  WiFi.onEvent(onWiFiEvent);
   WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(200);
 
-  Serial.printf("Connecting to Wi-Fi \"%s\"...\n", WIFI_SSID);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+#if DO_SCAN_ON_BOOT
+  scanNearbyNetworks();
+#endif
+
+  Serial.printf("Connecting to Wi-Fi \"%s\"", WIFI_SSID);
+  startWiFi();
 
   unsigned long t0 = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - t0 < 20000) {
@@ -115,13 +133,22 @@ void setupWiFi() {
   Serial.println();
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("✔ Wi-Fi Connected!");
-    Serial.print("   ESP32 IP: ");
+    Serial.print("Wi-Fi connected. IP: ");
     Serial.println(WiFi.localIP());
   } else {
-    Serial.printf("❌ Wi-Fi Failed! Reason: %s (code %d)\n", 
-                  getWiFiStatusName(WiFi.status()), WiFi.status());
-    Serial.println("👉 Check password matching exactly!");
+    Serial.println("Wi-Fi not connected yet. Will keep retrying in the background.");
+  }
+}
+
+// Call from loop(): retries WiFi every 10 s without blocking sensor sampling
+void maintainWiFi() {
+  if (WiFi.status() == WL_CONNECTED) return;
+  unsigned long now = millis();
+  if (now - lastWifiRetry > 10000) {
+    lastWifiRetry = now;
+    Serial.println("Retrying Wi-Fi...");
+    WiFi.disconnect();
+    startWiFi();
   }
 }
 
@@ -132,12 +159,12 @@ void connectMQTT() {
     unsigned long now = millis();
     if (now - lastMqttRetry > 3000) {
       lastMqttRetry = now;
-      Serial.printf("Connecting to MQTT broker at %s:%d... ", MQTT_BROKER, MQTT_PORT);
-      String clientId = "ESP32_Fall_" + String(random(0xffff), HEX);
+      Serial.printf("Connecting to MQTT broker %s:%d... ", MQTT_BROKER, MQTT_PORT);
+      String clientId = "ESP32_Fall_" + String((uint32_t)esp_random(), HEX);
       if (mqttClient.connect(clientId.c_str())) {
-        Serial.println("✔ Connected to MQTT Broker!");
+        Serial.println("connected");
       } else {
-        Serial.printf("Failed (rc=%d), retrying in 3s\n", mqttClient.state());
+        Serial.printf("failed (rc=%d), retrying in 3 s\n", mqttClient.state());
       }
     }
   } else {
@@ -155,19 +182,25 @@ void mpuWrite(uint8_t reg, uint8_t val) {
   Wire.endTransmission();
 }
 
+static inline int16_t readInt16() {
+  uint8_t hi = Wire.read();   // explicit order; avoids unspecified evaluation order
+  uint8_t lo = Wire.read();
+  return (int16_t)((hi << 8) | lo);
+}
+
 bool mpuRead(float &ax, float &ay, float &az, float &gx, float &gy, float &gz) {
   Wire.beginTransmission(MPU_ADDR);
   Wire.write(0x3B);
   if (Wire.endTransmission(false) != 0) return false;
   if (Wire.requestFrom((uint8_t)MPU_ADDR, (uint8_t)14) != 14) return false;
 
-  int16_t rax = (Wire.read() << 8) | Wire.read();
-  int16_t ray = (Wire.read() << 8) | Wire.read();
-  int16_t raz = (Wire.read() << 8) | Wire.read();
-  Wire.read(); Wire.read();
-  int16_t rgx = (Wire.read() << 8) | Wire.read();
-  int16_t rgy = (Wire.read() << 8) | Wire.read();
-  int16_t rgz = (Wire.read() << 8) | Wire.read();
+  int16_t rax = readInt16();
+  int16_t ray = readInt16();
+  int16_t raz = readInt16();
+  readInt16();                 // temperature, unused
+  int16_t rgx = readInt16();
+  int16_t rgy = readInt16();
+  int16_t rgz = readInt16();
 
   ax = rax / ACCEL_LSB_PER_G;  ay = ray / ACCEL_LSB_PER_G;  az = raz / ACCEL_LSB_PER_G;
   gx = rgx / GYRO_LSB_PER_DPS; gy = rgy / GYRO_LSB_PER_DPS; gz = rgz / GYRO_LSB_PER_DPS;
@@ -179,7 +212,9 @@ bool mpuRead(float &ax, float &ay, float &az, float &gx, float &gy, float &gz) {
 // ====================================================================================
 void setup() {
   Serial.begin(115200);
-  delay(1000);
+  unsigned long tSerial = millis();
+  while (!Serial && millis() - tSerial < 5000) delay(10);  // wait up to 5 s for USB serial monitor
+  delay(500);
 
   Serial.println("\n--- ESP32-C3 Fall Detector Initializing ---");
 
@@ -193,10 +228,12 @@ void setup() {
   Wire.requestFrom((uint8_t)MPU_ADDR, (uint8_t)1);
   uint8_t who = Wire.available() ? Wire.read() : 0;
   if (who == 0x00 || who == 0xFF) {
-    Serial.printf("❌ IMU not detected (0x%02X). Check SDA (GPIO 8) and SCL (GPIO 9)!\n", who);
-    while (true) delay(1000);
+    while (true) {   // repeat so the message is visible even if the monitor opens late
+      Serial.printf("IMU not detected (0x%02X). Check SDA (GPIO 8), SCL (GPIO 9), VCC, GND!\n", who);
+      delay(1000);
+    }
   }
-  Serial.printf("✔ MPU-6050 detected (ID: 0x%02X)\n", who);
+  Serial.printf("MPU-6050 detected (ID: 0x%02X)\n", who);
 
   // Configure MPU-6050
   mpuWrite(0x6B, 0x00); // Wake up
@@ -208,13 +245,14 @@ void setup() {
 
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
 
-  Serial.println("✔ Fall detection active. Waiting for fall events...\n");
+  Serial.println("Fall detection active. Waiting for fall events...\n");
 }
 
 // ====================================================================================
 // 6. MAIN LOOP
 // ====================================================================================
 void loop() {
+  maintainWiFi();
   connectMQTT();
 
   unsigned long now = millis();
@@ -238,7 +276,7 @@ void loop() {
 
     case FREEFALL:
       if (accMag > IMPACT_G && (now - stateStart) >= FREEFALL_MIN_MS) {
-        Serial.printf("💥 Impact detected: %.2f g\n", accMag);
+        Serial.printf("Impact detected: %.2f g\n", accMag);
         state = WAIT_IMPACT_DONE;
         stateStart = now;
       } else if (accMag >= FREEFALL_G && (now - stateStart) < FREEFALL_MIN_MS) {
@@ -263,14 +301,14 @@ void loop() {
         if (stillSince == 0) stillSince = now;
         if (now - stillSince >= INACTIVE_TIME_MS) {
           if (now - lastAlert > COOLDOWN_MS || lastAlert == 0) {
-            Serial.println("\n🚨 >>> FALL DETECTED! Sending to Raspberry Pi via MQTT... <<<");
+            Serial.println("\n>>> FALL DETECTED! Sending to Raspberry Pi via MQTT... <<<");
             lastAlert = now;
 
             if (mqttClient.connected()) {
               mqttClient.publish(MQTT_TOPIC, "FALL_DETECTED");
-              Serial.printf("📡 Published 'FALL_DETECTED' to topic: %s\n\n", MQTT_TOPIC);
+              Serial.printf("Published 'FALL_DETECTED' to topic: %s\n\n", MQTT_TOPIC);
             } else {
-              Serial.println("⚠ MQTT Not connected, could not send fall packet.");
+              Serial.println("MQTT not connected, could not send fall packet.");
             }
           }
           state = IDLE;
