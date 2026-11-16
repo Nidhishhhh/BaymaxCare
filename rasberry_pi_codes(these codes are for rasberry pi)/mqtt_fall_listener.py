@@ -21,10 +21,10 @@ except ImportError:
     print("Please install paho-mqtt: pip install paho-mqtt")
     sys.exit(1)
 
-# Default to localhost if Mosquitto is running on this Pi, or use broker.hivemq.com
-DEFAULT_BROKER = "localhost"
+# Default public cloud broker (works across 5GHz, 2.4GHz, or different Wi-Fi networks)
+DEFAULT_BROKER = "broker.hivemq.com"
 DEFAULT_PORT = 1883
-TOPIC_FALL = "baymax/fall"
+TOPIC_FALL = "baymaxcare/P-1042/fall"
 
 
 def speak(text: str):
@@ -113,3 +113,4 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print("\nListener stopped.")
+

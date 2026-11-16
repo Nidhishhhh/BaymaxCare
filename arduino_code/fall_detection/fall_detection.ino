@@ -22,10 +22,10 @@
 const char *WIFI_SSID     = "YOUR_WIFI_NAME";        // <--- Your 2.4 GHz Wi-Fi Name
 const char *WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";    // <--- Your Wi-Fi Password
 
-// MQTT Broker (Use your Raspberry Pi's IP, or public broker "broker.hivemq.com")
-const char *MQTT_BROKER   = "192.168.31.231";        // <--- IP of Raspberry Pi (or broker.hivemq.com)
+// MQTT Broker (Public cloud broker: works across 5GHz, 2.4GHz, and different Wi-Fi networks!)
+const char *MQTT_BROKER   = "broker.hivemq.com";
 const int   MQTT_PORT     = 1883;
-const char *MQTT_TOPIC    = "baymax/fall";
+const char *MQTT_TOPIC    = "baymaxcare/P-1042/fall";
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
