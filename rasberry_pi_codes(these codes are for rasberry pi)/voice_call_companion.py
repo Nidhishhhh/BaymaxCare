@@ -228,10 +228,6 @@ class BaymaxVoiceCompanion:
             self.stop_audio_streams()
             self.play_chime("hangup")
 
-        elif m_type == "fall_verifying":
-            logger.warning(f"⚠️ [FALL ALERT RECEIVED] Patient {msg.get('patient_code', self.patient_code)} impact detected!")
-            asyncio.create_task(self.run_fall_voice_checks(websocket))
-
         elif m_type == "audio_frame" and self.in_call:
             raw = msg.get("raw_bytes")
             if self.output_stream and raw:
@@ -242,43 +238,6 @@ class BaymaxVoiceCompanion:
                     self.output_stream.write(to_play)
                 except Exception as e:
                     logger.debug(f"Speaker write error: {e}")
-
-    async def run_fall_voice_checks(self, websocket):
-        """Asks 'Fall detected. Are you okay?' 3 times through speaker and calls guardian."""
-        print("\n" + "="*65)
-        print(f"⚠️ [FALL VERIFICATION INITIATED] Patient {self.patient_code}")
-        print("   Baymax will ask 3 times: 'Fall detected. Are you okay?'")
-        print("="*65)
-
-        for attempt in range(1, 4):
-            phrase = "Fall detected. Are you okay?" if attempt == 1 else "Are you okay?"
-            print(f"   -> [Attempt {attempt}/3] Asking: \"{phrase}\"")
-            self.play_chime("ring")
-            try:
-                import pyttsx3
-                engine = pyttsx3.init()
-                engine.say(phrase)
-                engine.runAndWait()
-            except Exception:
-                pass
-            await asyncio.sleep(4)
-
-        # After 3 checks without cancellation:
-        print("\n" + "#"*65)
-        print("🚨 [CRITICAL ALERT] No response from patient after 3 voice checks!")
-        print("📞 CALLING THE GUARDIAN NOW... (+1-800-555-CARE)")
-        print("   Emergency alert dispatched to Doctor & Guardian consoles.")
-        print("#"*65 + "\n")
-
-        # Notify server to switch dashboards to RED
-        try:
-            await websocket.send(json.dumps({
-                "type": "fall_confirmed",
-                "patient_code": self.patient_code,
-                "reason": "No response to 3 companion check-ins"
-            }))
-        except Exception:
-            pass
 
     async def run(self):
         """Main connection and auto-reconnect loop with HTTPS/WSS auto-negotiation."""

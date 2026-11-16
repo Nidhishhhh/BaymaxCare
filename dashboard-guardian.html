@@ -2232,21 +2232,20 @@
         if (S.state === 'normal') { el.hidden = true; el.className = 'alert'; el.innerHTML = ''; return }
         el.hidden = false; el.className = 'alert ' + S.state;
         if (S.state === 'verifying') {
-          const remSecs = Math.max(0, Math.ceil((S.deadline - Date.now()) / 1000));
-          el.innerHTML = `<div class="al-ic" aria-hidden="true">!</div><div><h2>Possible Fall Detected · Verifying</h2><p class="al-p">Companion checking if patient is okay or not... Asked "Are you okay?" 3 times and waiting for response or wristband press.</p><div class="bar"><i id="cdBar"></i></div></div><div class="al-side"><div class="count" id="cd">0:${String(remSecs).padStart(2, '0')}</div>${can ? '<button class="btn signal" type="button" data-act="safe">I confirmed she is safe</button>' : '<span class="muted">Companion checking patient</span>'}</div>`;
+          el.innerHTML = `<div class="al-ic" aria-hidden="true">!</div><div><h2>Possible fall detected. Verifying.</h2><p class="al-p">Impact at ${fmtTime(S.fallAt)} followed by no movement. The companion asked "Are you alright?" and is waiting for a reply or a wristband button press.</p><div class="bar"><i id="cdBar"></i></div></div><div class="al-side"><div class="count" id="cd">0:30</div>${can ? '<button class="btn signal" type="button" data-act="safe">I confirmed she is safe</button>' : '<span class="muted">Caregivers have been notified</span>'}</div>`;
         } else {
-          el.innerHTML = `<div class="al-ic" aria-hidden="true">!</div><div><h2>CRITICAL: Fall Detected!</h2><p class="al-p">Emergency. No response received from patient during companion check. Calling Guardian now.</p><ul class="contacts"><li>Calling Guardian <span>Call placed (+1-800-555-CARE)</span></li><li>Dr. Sarah Jenkins clinic <span>Emergency alert</span></li><li>Sunita Nair, caregiver <span>Push alert</span></li></ul></div><div class="al-side">${can ? '<button class="btn signal" type="button" data-act="ack">Acknowledge and mark resolved</button>' : '<span class="muted">Waiting for acknowledgment</span>'}</div>`;
+          el.innerHTML = `<div class="al-ic" aria-hidden="true">!</div><div><h2>Emergency. No response to the fall check.</h2><p class="al-p">Emergency contacts were alerted at ${fmtTime(new Date())}. Margaret has not replied to the companion or pressed the wristband button.</p><ul class="contacts"><li>Priya Iyer, daughter <span>SMS and call placed</span></li><li>Dr. Sarah Jenkins' clinic <span>Alert sent</span></li><li>Sunita Nair, caregiver <span>Push notification</span></li></ul></div><div class="al-side">${can ? '<button class="btn signal" type="button" data-act="ack">Acknowledge and mark resolved</button>' : '<span class="muted">Waiting for a caregiver to acknowledge</span>'}</div>`;
         }
       }
 
       /* fall state machine */
       function startFall() {
         if (S.state !== 'normal') { toast('A fall check is already in progress.'); return }
-        const now = new Date(); S.state = 'verifying'; S.deadline = Date.now() + 20000; S.boost = 26; S.fallAt = now;
-        S.fallInc = { id: Date.now(), t: now, title: 'Fall detected - verifying', detail: 'ESP32 impact detected. Companion checking if patient is okay or not.', status: 'pending', fall: true };
+        const now = new Date(); S.state = 'verifying'; S.deadline = Date.now() + 30000; S.boost = 26; S.fallAt = now;
+        S.fallInc = { id: Date.now(), t: now, title: 'Fall detected - verifying', detail: 'Impact spike followed by no movement. Waiting for the patient to respond.', status: 'pending', fall: true };
         INC.unshift(S.fallInc);
-        say('sys', 'ESP32 MPU6050: Impact spike detected, verifying inactivity');
-        say('agent', 'Fall detected. Are you okay?');
+        say('sys', 'IMU: 3.1 g impact, then motion variance below threshold for 4 s');
+        say('agent', 'Margaret, are you alright? Say "I\'m fine" or press the button on your wristband.');
         pushSummary('event'); renderAlert(); renderInc();
       }
       function resolveFall(how) {
@@ -2258,18 +2257,14 @@
         toast('Fall incident resolved.'); renderAlert(); renderInc(); pushSummary('event');
       }
       function escalate() {
-        S.state = 'critical'; const i = S.fallInc; i.status = 'critical'; i.title = 'CRITICAL: Fall detected - calling guardian'; i.detail = 'No reply to 3 companion check-ins.';
-        say('sys', 'notify_contacts: Calling Guardian (+1-800-555-CARE), Dr. Sarah Jenkins clinic (alert)');
-        renderAlert(); renderInc(); toast('🚨 CRITICAL: Fall detected! Calling guardian now.');
+        S.state = 'critical'; const i = S.fallInc; i.status = 'critical'; i.title = 'Fall detected - no response, emergency contacts alerted'; i.detail = 'No reply to the companion or wristband within 30 s.';
+        say('sys', 'notify_contacts: Priya Iyer (SMS + call), Dr. Sarah Jenkins clinic (alert), Sunita Nair (push)');
+        renderAlert(); renderInc(); toast('No response. Emergency contacts have been alerted.');
       }
       function fallLoop() {
         if (S.state === 'verifying') {
           const rem = Math.max(0, (S.deadline - Date.now()) / 1000), cd = $('#cd');
-          if (cd) {
-            cd.textContent = '0:' + String(Math.ceil(rem)).padStart(2, '0');
-            const pct = Math.min(100, Math.max(0, (rem / 20 * 100)));
-            if ($('#cdBar')) $('#cdBar').style.width = pct + '%';
-          }
+          if (cd) { cd.textContent = '0:' + String(Math.ceil(rem)).padStart(2, '0'); $('#cdBar').style.width = (rem / 30 * 100) + '%' }
           if (rem <= 0) escalate();
         }
         const lc = $('#liveClock'); if (lc) lc.textContent = new Date().toLocaleTimeString('en-US');
@@ -2650,49 +2645,6 @@
         }
       }
 
-      function handleIncomingFallVerifying(msg) {
-        if (S.state === 'critical') return;
-        const now = new Date();
-        const duration = msg.timeout || 20;
-        S.state = 'verifying';
-        S.deadline = Date.now() + (duration * 1000);
-        S.fallAt = now;
-        S.fallInc = {
-          id: Date.now(),
-          t: now,
-          title: 'Fall detected - verifying',
-          detail: 'ESP32 motion sensor detected impact. Companion checking if patient is okay or not (3 checks in progress).',
-          status: 'pending',
-          fall: true
-        };
-        INC.unshift(S.fallInc);
-        renderAlert();
-        renderInc();
-        toast('⚠️ Possible fall detected: Companion checking if patient is okay...');
-      }
-
-      function handleIncomingFallConfirmed(msg) {
-        S.state = 'critical';
-        if (!S.fallInc) {
-          S.fallInc = {
-            id: Date.now(),
-            t: new Date(),
-            title: 'CRITICAL: Fall detected - calling guardian',
-            detail: msg.reason || 'No response to 3 companion check-ins. Guardian called.',
-            status: 'critical',
-            fall: true
-          };
-          INC.unshift(S.fallInc);
-        } else {
-          S.fallInc.status = 'critical';
-          S.fallInc.title = 'CRITICAL: Fall detected - calling guardian';
-          S.fallInc.detail = msg.reason || 'No response from patient to 3 companion check-ins.';
-        }
-        renderAlert();
-        renderInc();
-        toast('🚨 CRITICAL: Fall confirmed! Calling guardian now.');
-      }
-
       async function handleCallSignaling(msg) {
         if (msg.type === 'call_accept' && callState.active) {
           if ($('#callStatusSub')) $('#callStatusSub').textContent = 'Connected (2-Way Live Audio) · 00:00';
@@ -2701,10 +2653,6 @@
         } else if (msg.type === 'call_end' && callState.active) {
           endVoiceCall(false);
           toast('Call ended by in-home companion');
-        } else if (msg.type === 'fall_verifying') {
-          handleIncomingFallVerifying(msg);
-        } else if (msg.type === 'fall_confirmed') {
-          handleIncomingFallConfirmed(msg);
         } else if (msg.type === 'webrtc_answer' && callState.peerConnection) {
           await callState.peerConnection.setRemoteDescription(new RTCSessionDescription(msg.sdp));
         } else if (msg.type === 'webrtc_ice' && callState.peerConnection) {
