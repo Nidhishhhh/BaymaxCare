@@ -83,7 +83,7 @@ void scanNearbyNetworks() {
 
   int n = WiFi.scanNetworks(false, true); // blocking synchronous scan
   if (n <= 0) {
-    Serial.printf("❌ No networks found (scan result: %d). If using XIAO ESP32-C3, make sure the external antenna is plugged in!\n", n);
+    Serial.printf("❌ No networks found (scan result: %d).\n", n);
   } else {
     Serial.printf("✔ Found %d networks:\n", n);
     for (int i = 0; i < n; ++i) {
@@ -91,6 +91,8 @@ void scanNearbyNetworks() {
                     i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i));
     }
   }
+  WiFi.scanDelete(); // Critical: frees scan memory so WiFi.begin can connect!
+  delay(200);
   Serial.println("-------------------------------------------------------\n");
 }
 
@@ -98,11 +100,15 @@ void setupWiFi() {
   // First scan to see what networks exist
   scanNearbyNetworks();
 
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(200);
+
   Serial.printf("Connecting to Wi-Fi \"%s\"...\n", WIFI_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   unsigned long t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) {
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 20000) {
     delay(400);
     Serial.print(".");
   }
@@ -115,7 +121,7 @@ void setupWiFi() {
   } else {
     Serial.printf("❌ Wi-Fi Failed! Reason: %s (code %d)\n", 
                   getWiFiStatusName(WiFi.status()), WiFi.status());
-    Serial.println("👉 Look at the scanned list above to find the exact SSID name.");
+    Serial.println("👉 Check password matching exactly!");
   }
 }
 
