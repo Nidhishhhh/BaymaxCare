@@ -14,6 +14,8 @@ Run on Raspberry Pi:
 import time
 import argparse
 import sys
+import subprocess
+import shutil
 
 try:
     import paho.mqtt.client as mqtt
@@ -26,17 +28,46 @@ DEFAULT_BROKER = "broker.hivemq.com"
 DEFAULT_PORT = 1883
 TOPIC_FALL = "baymaxcare/P-1042/fall"
 
+_tts_engine = None
+_tts_engine_failed = False
+
 
 def speak(text: str):
-    """Speaks out loud through the Raspberry Pi speaker."""
+    """Speaks out loud through the Raspberry Pi speaker with robust fallbacks."""
     print(f"🤖 [Baymax Audio]: \"{text}\"")
-    try:
-        import pyttsx3
-        engine = pyttsx3.init()
-        engine.say(text)
-        engine.runAndWait()
-    except Exception:
-        pass
+
+    # Method 1: Direct system espeak (most reliable on Raspberry Pi Linux, no Python 3.13 weakref bugs)
+    if shutil.which("espeak"):
+        try:
+            subprocess.run(
+                ["espeak", "-ven+m3", "-a", "120", "-s", "145", text],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=6
+            )
+            return
+        except Exception:
+            pass
+
+    if shutil.which("spd-say"):
+        try:
+            subprocess.run(
+                ["spd-say", text],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=6
+            )
+            return
+        except Exception:
+            pass
+
+    # Method 2: pyttsx3 singleton (avoid re-init which crashes under Python 3.13)
+    global _tts_engine, _tts_engine_failed
+    if not _tts_engine_failed:
+        try:
+            if _tts_engine is None:
+                import pyttsx3
+                _tts_engine = pyttsx3.init()
+            _tts_engine.say(text)
+            _tts_engine.runAndWait()
+        except Exception:
+            _tts_engine_failed = True  # Avoid repeated crash spam if ALSA is busy
 
 
 def on_connect(client, userdata, flags, rc, properties=None):
