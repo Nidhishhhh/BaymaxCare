@@ -62,13 +62,45 @@ unsigned long lastMqttRetry = 0;
 // ====================================================================================
 // 3. WI-FI & MQTT CONNECTION
 // ====================================================================================
+const char* getWiFiStatusName(wl_status_t status) {
+  switch (status) {
+    case WL_IDLE_STATUS:     return "IDLE";
+    case WL_NO_SSID_AVAIL:   return "SSID NOT FOUND (Hotspot not broadcasting on 2.4 GHz)";
+    case WL_SCAN_COMPLETED:  return "SCAN COMPLETED";
+    case WL_CONNECTED:       return "CONNECTED";
+    case WL_CONNECT_FAILED:  return "CONNECT FAILED (Check password or security)";
+    case WL_CONNECTION_LOST: return "CONNECTION LOST";
+    case WL_DISCONNECTED:    return "DISCONNECTED / TIMEOUT";
+    default:                 return "UNKNOWN";
+  }
+}
+
+void scanNearbyNetworks() {
+  Serial.println("\n--- Scanning for available 2.4 GHz Wi-Fi networks ---");
+  int n = WiFi.scanNetworks();
+  if (n == 0) {
+    Serial.println("❌ No Wi-Fi networks found! Check ESP32 antenna / power.");
+  } else {
+    Serial.printf("Found %d networks:\n", n);
+    for (int i = 0; i < n; ++i) {
+      Serial.printf("  [%d] \"%s\" (Signal: %d dBm, Channel: %d)\n", 
+                    i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i));
+    }
+  }
+  Serial.println("------------------------------------------------------\n");
+}
+
 void setupWiFi() {
-  Serial.printf("\nConnecting to Wi-Fi \"%s\"...\n", WIFI_SSID);
+  WiFi.disconnect(true);
+  delay(500);
   WiFi.mode(WIFI_STA);
+  delay(100);
+
+  Serial.printf("\nConnecting to Wi-Fi \"%s\"...\n", WIFI_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   unsigned long t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 20000) {
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) {
     delay(400);
     Serial.print(".");
   }
@@ -79,7 +111,10 @@ void setupWiFi() {
     Serial.print("   ESP32 IP: ");
     Serial.println(WiFi.localIP());
   } else {
-    Serial.println("❌ Wi-Fi Connection Failed. Check SSID/Password and 2.4 GHz band.");
+    Serial.printf("❌ Wi-Fi Failed! Reason: %s (code %d)\n", 
+                  getWiFiStatusName(WiFi.status()), WiFi.status());
+    // Scan networks so you can see if your phone or router is actually detected
+    scanNearbyNetworks();
   }
 }
 
