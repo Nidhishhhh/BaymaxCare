@@ -23,8 +23,8 @@
 // ====================================================================================
 // 1. NETWORK & MQTT CONFIGURATION (Change these to match your setup)
 // ====================================================================================
-const char *WIFI_SSID     = "YOUR_WIFI_NAME";      // <--- Put your Wi-Fi name here
-const char *WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";  // <--- Put your Wi-Fi password here
+const char *WIFI_SSID     = "NidhishJioAir";      // <--- Put your Wi-Fi name here
+const char *WIFI_PASSWORD = "Nidhish@322005";  // <--- Put your Wi-Fi password here
 
 // Fallback SoftAP mode (if home Wi-Fi is unreachable)
 const char *AP_SSID       = "Baymax_FallDetector";
@@ -164,25 +164,54 @@ void setupWiFi() {
   bool connected = false;
 
   if (strlen(WIFI_SSID) > 0 && strcmp(WIFI_SSID, "YOUR_WIFI_NAME") != 0) {
-    Serial.printf("Connecting to Wi-Fi: \"%s\" ", WIFI_SSID);
+    Serial.printf("\nConnecting to Wi-Fi: \"%s\"...\n", WIFI_SSID);
+    WiFi.disconnect(true, true);
+    delay(500);
     WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
     unsigned long t0 = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 12000) {
-      delay(300);
+    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 25000) {
+      delay(400);
       Serial.print(".");
     }
     Serial.println();
     connected = (WiFi.status() == WL_CONNECTED);
+
+    if (!connected) {
+      Serial.println("\n❌ Wi-Fi Connection Failed!");
+      Serial.printf("   Status Code: %d (", WiFi.status());
+      switch (WiFi.status()) {
+        case WL_NO_SSID_AVAIL:  Serial.print("SSID not found - make sure 2.4 GHz Wi-Fi band is active"); break;
+        case WL_CONNECT_FAILED: Serial.print("Password incorrect or WPA auth rejected"); break;
+        case WL_DISCONNECTED:   Serial.print("Handshake failed or router rejected ESP32"); break;
+        default:                Serial.print("DHCP timeout"); break;
+      }
+      Serial.println(")");
+
+      // Scan and list visible 2.4 GHz networks
+      Serial.println("\n--- Nearby 2.4 GHz Wi-Fi Networks Detected by ESP32 ---");
+      int n = WiFi.scanNetworks();
+      if (n == 0) {
+        Serial.println("  No networks detected. Please move ESP32 closer to the router.");
+      } else {
+        for (int i = 0; i < n && i < 8; ++i) {
+          Serial.printf("  [%d] \"%s\" (Signal: %d dBm)\n", i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+        }
+      }
+      Serial.println("------------------------------------------------------\n");
+    }
   }
 
   if (connected) {
-    Serial.print("Wi-Fi connected! ESP32 IP: http://");
+    Serial.println("✔ Wi-Fi connected successfully!");
+    Serial.print("✔ ESP32 IP address: http://");
     Serial.println(WiFi.localIP());
   } else {
     WiFi.mode(WIFI_AP);
     WiFi.softAP(AP_SSID, AP_PASSWORD);
-    Serial.printf("Access Point active. Connect to \"%s\" (password %s)\n", AP_SSID, AP_PASSWORD);
+    Serial.printf("⚠ Access Point active. Connect phone/PC to \"%s\" (password: %s)\n", AP_SSID, AP_PASSWORD);
     Serial.print("Open in browser: http://");
     Serial.println(WiFi.softAPIP());
   }
