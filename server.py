@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import asyncio
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
@@ -63,6 +64,82 @@ class ConnectionManager:
                 self.disconnect(connection)
 
 ws_manager = ConnectionManager()
+
+main_loop: Optional[asyncio.AbstractEventLoop] = None
+
+def broadcast_from_thread(data: dict):
+    """Thread-safe WebSocket broadcast from background worker threads (like MQTT)."""
+    global main_loop
+    if main_loop and main_loop.is_running():
+        try:
+            asyncio.run_coroutine_threadsafe(ws_manager.broadcast(data), main_loop)
+        except Exception as e:
+            logger.debug(f"Broadcast from thread error: {e}")
+
+MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "192.168.31.172")
+MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
+
+def start_mqtt_bridge(broker_host=MQTT_BROKER_HOST, broker_port=MQTT_BROKER_PORT):
+    """Subscribes to MQTT topics from ESP32 / Raspberry Pi and relays events to WebSockets."""
+    try:
+        import paho.mqtt.client as mqtt
+    except ImportError:
+        logger.warning("paho-mqtt not installed; MQTT bridge will not start.")
+        return
+
+    def on_connect(client, userdata, flags, rc, properties=None):
+        logger.info(f"MQTT Bridge connected to {broker_host}:{broker_port}")
+        client.subscribe("baymax/fall_alert")
+        client.subscribe("baymax/fall_confirmed")
+        logger.info("MQTT Bridge subscribed to 'baymax/fall_alert' and 'baymax/fall_confirmed'")
+
+    def on_message(client, userdata, msg):
+        try:
+            payload = json.loads(msg.payload.decode())
+        except Exception:
+            payload = {}
+
+        topic = msg.topic
+        patient_code = payload.get("patient_code", "P-1042")
+
+        if topic == "baymax/fall_alert":
+            logger.warning(f"⚠️ [MQTT] Fall alert received from ESP32 for {patient_code}!")
+            broadcast_from_thread({
+                "type": "fall_verifying",
+                "patient_code": patient_code,
+                "timeout": 20,
+                "acc": payload.get("acc", 2.5),
+                "message": "Companion checking if patient is okay or not"
+            })
+
+        elif topic == "baymax/fall_confirmed":
+            logger.error(f"🚨 [MQTT] Fall confirmed by Companion for {patient_code}!")
+            broadcast_from_thread({
+                "type": "fall_confirmed",
+                "patient_code": patient_code,
+                "reason": payload.get("reason", "No response to 3 companion check-ins"),
+                "message": "CRITICAL: Fall detected! Emergency contacts alerted."
+            })
+
+    try:
+        try:
+            client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        except Exception:
+            client = mqtt.Client()
+
+        client.on_connect = on_connect
+        client.on_message = on_message
+        client.connect_async(broker_host, broker_port, 60)
+        client.loop_start()
+        logger.info(f"MQTT background thread started targeting {broker_host}:{broker_port}")
+    except Exception as e:
+        logger.warning(f"Could not connect to MQTT broker ({e}). Falling back to HTTP/WebSocket triggers.")
+
+@app.on_event("startup")
+async def on_startup():
+    global main_loop
+    main_loop = asyncio.get_running_loop()
+    start_mqtt_bridge()
 
 @app.websocket("/ws/stream")
 async def websocket_endpoint(websocket: WebSocket):
@@ -725,6 +802,31 @@ async def auto_fill_intake(payload: AutoFillPayload, db: Session = Depends(get_d
     })
 
     return {"message": "Records successfully auto-filled in database", "patient": patient.full_name}
+
+class FallTriggerPayload(BaseModel):
+    patient_code: str = "P-1042"
+    stage: str = "verifying"  # "verifying" or "confirmed"
+    acc: Optional[float] = 2.8
+
+@app.post("/api/fall/trigger")
+async def trigger_fall_api(payload: FallTriggerPayload):
+    """Triggers fall verification or confirmation on dashboards (via HTTP or manual test)."""
+    if payload.stage == "verifying":
+        await ws_manager.broadcast({
+            "type": "fall_verifying",
+            "patient_code": payload.patient_code,
+            "timeout": 20,
+            "acc": payload.acc,
+            "message": "Companion checking if patient is okay or not"
+        })
+        return {"status": "ok", "stage": "verifying", "patient_code": payload.patient_code}
+    else:
+        await ws_manager.broadcast({
+            "type": "fall_confirmed",
+            "patient_code": payload.patient_code,
+            "message": "CRITICAL: Fall detected! Emergency contacts alerted."
+        })
+        return {"status": "ok", "stage": "confirmed", "patient_code": payload.patient_code}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 

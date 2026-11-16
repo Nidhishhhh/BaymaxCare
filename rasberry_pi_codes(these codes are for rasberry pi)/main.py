@@ -83,6 +83,10 @@ def main():
     ap.add_argument("--server-port", type=int, default=8000, help="Port of BaymaxCare server")
     ap.add_argument("--patient-code", default="P-1042", help="Patient Code for this companion device")
 
+    # Fall Detection Verifier (MQTT)
+    ap.add_argument("--no-fall-verifier", action="store_true", help="disable MQTT fall verifier service")
+    ap.add_argument("--mqtt-broker", default=None, help="IP of MQTT Broker (defaults to server-host)")
+
     args = ap.parse_args()
 
     quit_event = threading.Event()
@@ -138,6 +142,19 @@ def main():
         except Exception as e:
             print(f"[Telehealth] not available ({e}) -> continuing without telehealth voice calls.")
 
+    # 3b. Start MQTT Fall Detection Verifier in Background Thread
+    fall_verifier_client = None
+    if not args.no_fall_verifier:
+        try:
+            import fall_verifier
+            broker_ip = args.mqtt_broker or args.server_host
+            fall_verifier_client = fall_verifier.start_in_background(
+                broker=broker_ip,
+                patient_code=args.patient_code
+            )
+        except Exception as e:
+            print(f"[FallVerifier] not available ({e}) -> continuing without MQTT fall verifier.")
+
     # 4. Initialize Hotword Listener
     listener = None
     if not args.no_hotword:
@@ -158,10 +175,15 @@ def main():
         else:
             start_requested.set()
 
+    def on_button_stop():
+        assistant.deactivate()
+        if fall_verifier_client:
+            fall_verifier_client.cancel_verification()
+
     buttons = None
     try:
         from push_button import PushButtons
-        buttons = PushButtons(on_button_start, assistant.deactivate,
+        buttons = PushButtons(on_button_start, on_button_stop,
                               args.pin_activate, args.pin_deactivate)
         buttons.start()
         print(f"[Buttons] GPIO pins {args.pin_activate} (start) and {args.pin_deactivate} (stop) active.")
