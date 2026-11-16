@@ -76,27 +76,29 @@ const char* getWiFiStatusName(wl_status_t status) {
 }
 
 void scanNearbyNetworks() {
-  Serial.println("\n--- Scanning for available 2.4 GHz Wi-Fi networks ---");
-  int n = WiFi.scanNetworks();
-  if (n == 0) {
-    Serial.println("❌ No Wi-Fi networks found! Check ESP32 antenna / power.");
+  Serial.println("\n--- Scanning for all nearby 2.4 GHz Wi-Fi networks ---");
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect(true);
+  delay(300);
+
+  int n = WiFi.scanNetworks(false, true); // blocking synchronous scan
+  if (n <= 0) {
+    Serial.printf("❌ No networks found (scan result: %d). If using XIAO ESP32-C3, make sure the external antenna is plugged in!\n", n);
   } else {
-    Serial.printf("Found %d networks:\n", n);
+    Serial.printf("✔ Found %d networks:\n", n);
     for (int i = 0; i < n; ++i) {
-      Serial.printf("  [%d] \"%s\" (Signal: %d dBm, Channel: %d)\n", 
+      Serial.printf("  [%d] \"%s\" | Signal: %d dBm | Ch: %d\n", 
                     i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i));
     }
   }
-  Serial.println("------------------------------------------------------\n");
+  Serial.println("-------------------------------------------------------\n");
 }
 
 void setupWiFi() {
-  WiFi.disconnect(true);
-  delay(500);
-  WiFi.mode(WIFI_STA);
-  delay(100);
+  // First scan to see what networks exist
+  scanNearbyNetworks();
 
-  Serial.printf("\nConnecting to Wi-Fi \"%s\"...\n", WIFI_SSID);
+  Serial.printf("Connecting to Wi-Fi \"%s\"...\n", WIFI_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   unsigned long t0 = millis();
@@ -113,8 +115,7 @@ void setupWiFi() {
   } else {
     Serial.printf("❌ Wi-Fi Failed! Reason: %s (code %d)\n", 
                   getWiFiStatusName(WiFi.status()), WiFi.status());
-    // Scan networks so you can see if your phone or router is actually detected
-    scanNearbyNetworks();
+    Serial.println("👉 Look at the scanned list above to find the exact SSID name.");
   }
 }
 
