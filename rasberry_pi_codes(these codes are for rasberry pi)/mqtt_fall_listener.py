@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 """
 BaymaxCare: Raspberry Pi MQTT Fall Listener
-Listens for fall events from ESP32 on topic 'baymax/fall'.
+Listens for fall events from ESP32 on topic 'baymaxcare/P-1042/fall'.
 When a fall is received:
   1. Speaks "Fall detected. Are you okay?" 3 times through the speaker.
   2. If no response after 3 times, prints the emergency guardian call to the terminal.
 
-Run on Raspberry Pi:
+Run Standalone on Raspberry Pi:
     python3 mqtt_fall_listener.py
-    (or specify broker: python3 mqtt_fall_listener.py --broker 192.168.31.231)
+    (or specify broker: python3 mqtt_fall_listener.py --broker broker.hivemq.com)
+
+Or import in main.py:
+    import mqtt_fall_listener
+    listener = mqtt_fall_listener.start_in_background(...)
 """
 
 import time
 import argparse
 import sys
+import threading
 import subprocess
 import shutil
 
@@ -30,6 +35,7 @@ TOPIC_FALL = "baymaxcare/P-1042/fall"
 
 _tts_engine = None
 _tts_engine_failed = False
+_fall_in_progress = threading.Lock()
 
 
 def speak(text: str):
@@ -70,78 +76,130 @@ def speak(text: str):
             _tts_engine_failed = True  # Avoid repeated crash spam if ALSA is busy
 
 
-def on_connect(client, userdata, flags, rc, properties=None):
-    if rc == 0:
-        print(f"✔ Connected to MQTT Broker successfully!")
-        client.subscribe(TOPIC_FALL)
-        print(f"✔ Subscribed to topic: '{TOPIC_FALL}'")
-        print("Waiting for fall events from ESP32...\n")
-    else:
-        print(f"❌ Connection failed with result code {rc}")
-
-
-def on_message(client, userdata, msg):
-    payload = msg.payload.decode().strip()
-    print(f"\n[MQTT Incoming] Topic: {msg.topic} -> Message: '{payload}'")
-
-    if "FALL" in payload.upper():
-        handle_fall_event()
-
-
 def handle_fall_event():
-    print("\n" + "="*60)
-    print("⚠️  [FALL DETECTED BY ESP32 SENSOR]")
-    print("   Initiating 3-step patient check...")
-    print("="*60)
+    """Executes the 3-step check and triggers emergency guardian call."""
+    if not _fall_in_progress.acquire(blocking=False):
+        # A check is already running; ignore duplicate sensor triggers
+        return
 
-    for i in range(1, 4):
-        phrase = "Fall detected. Are you okay?" if i == 1 else "Are you okay?"
-        print(f"\n   -> [Check {i}/3]: Asking: \"{phrase}\"")
-        speak(phrase)
-        print("      Waiting 4 seconds for patient response...")
-        time.sleep(4)
+    try:
+        print("\n" + "="*60)
+        print("⚠️  [FALL DETECTED BY ESP32 SENSOR]")
+        print("   Initiating 3-step patient check...")
+        print("="*60)
 
-    # After 3 checks without response:
-    print("\n" + "#"*60)
-    print("🚨 [EMERGENCY PROTOCOL ACTIVATED]")
-    print("   Patient did not respond to 3 check-ins!")
-    print("📞 Calling the guardian... (Priya Iyer: +1-800-555-CARE)")
-    print("#"*60 + "\n")
+        for i in range(1, 4):
+            phrase = "Fall detected. Are you okay?" if i == 1 else "Are you okay?"
+            print(f"\n   -> [Check {i}/3]: Asking: \"{phrase}\"")
+            speak(phrase)
+            print("      Waiting 4 seconds for patient response...")
+            time.sleep(4)
+
+        # After 3 checks without response:
+        print("\n" + "#"*60)
+        print("🚨 [EMERGENCY PROTOCOL ACTIVATED]")
+        print("   Patient did not respond to 3 check-ins!")
+        print("📞 Calling the guardian... (Priya Iyer: +1-800-555-CARE)")
+        print("#"*60 + "\n")
+    finally:
+        _fall_in_progress.release()
+
+
+class BaymaxFallListener:
+    """Manages MQTT connection and listens for fall detection events in the background."""
+
+    def __init__(self, broker=DEFAULT_BROKER, port=DEFAULT_PORT, topic=TOPIC_FALL, on_fall_detected=None):
+        self.broker = broker
+        self.port = port
+        self.topic = topic
+        self.on_fall_detected = on_fall_detected or handle_fall_event
+        self.running = False
+        self.client = None
+        self._thread = None
+
+    def _on_connect(self, client, userdata, flags, rc, properties=None):
+        if rc == 0:
+            print(f"[FallDetector] ✔ Connected to MQTT Broker ({self.broker}:{self.port})")
+            client.subscribe(self.topic)
+            print(f"[FallDetector] ✔ Subscribed to topic: '{self.topic}'")
+        else:
+            print(f"[FallDetector] ❌ Connection failed with result code {rc}")
+
+    def _on_message(self, client, userdata, msg):
+        payload = msg.payload.decode().strip()
+        print(f"\n[FallDetector] MQTT Incoming -> '{payload}'")
+
+        if "FALL" in payload.upper():
+            # Run in a separate thread so MQTT loop is not blocked by sleep/speech
+            threading.Thread(target=self.on_fall_detected, daemon=True).start()
+
+    def run(self):
+        self.running = True
+        try:
+            self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        except Exception:
+            self.client = mqtt.Client()
+
+        self.client.on_connect = self._on_connect
+        self.client.on_message = self._on_message
+
+        while self.running:
+            try:
+                self.client.connect(self.broker, self.port, 60)
+                self.client.loop_forever()
+            except Exception as e:
+                if self.running:
+                    print(f"[FallDetector] ⚠ Connection error ({e}). Retrying in 5s...")
+                    time.sleep(5)
+
+    def start(self):
+        self._thread = threading.Thread(target=self.run, daemon=True)
+        self._thread.start()
+
+    def shutdown(self):
+        self.running = False
+        if self.client:
+            try:
+                self.client.disconnect()
+            except Exception:
+                pass
+
+
+_listener_instance = None
+
+def start_in_background(broker=DEFAULT_BROKER, port=DEFAULT_PORT, topic=TOPIC_FALL, on_fall_detected=None):
+    """Starts the MQTT Fall Listener in a background daemon thread."""
+    global _listener_instance
+    _listener_instance = BaymaxFallListener(
+        broker=broker,
+        port=port,
+        topic=topic,
+        on_fall_detected=on_fall_detected
+    )
+    _listener_instance.start()
+    return _listener_instance
 
 
 def main():
     parser = argparse.ArgumentParser(description="Baymax Raspberry Pi Fall Listener")
-    parser.add_argument("--broker", default=DEFAULT_BROKER, help="MQTT Broker IP (default: localhost or broker.hivemq.com)")
+    parser.add_argument("--broker", default=DEFAULT_BROKER, help="MQTT Broker IP (default: broker.hivemq.com)")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="MQTT Port (default: 1883)")
+    parser.add_argument("--topic", default=TOPIC_FALL, help=f"MQTT Topic (default: {TOPIC_FALL})")
     args = parser.parse_args()
 
     print("==================================================")
     print("      BaymaxCare Raspberry Pi Fall Listener       ")
     print(f"      Broker: {args.broker}:{args.port}")
-    print(f"      Topic : {TOPIC_FALL}")
+    print(f"      Topic : {args.topic}")
     print("==================================================")
 
+    listener = BaymaxFallListener(broker=args.broker, port=args.port, topic=args.topic)
     try:
-        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-    except Exception:
-        client = mqtt.Client()
-
-    client.on_connect = on_connect
-    client.on_message = on_message
-
-    while True:
-        try:
-            print(f"Connecting to MQTT Broker at {args.broker}:{args.port}...")
-            client.connect(args.broker, args.port, 60)
-            client.loop_forever()
-        except Exception as e:
-            print(f"⚠ Connection error ({e}). Retrying in 3 seconds...")
-            time.sleep(3)
+        listener.run()
+    except KeyboardInterrupt:
+        print("\nListener stopped.")
+        listener.shutdown()
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\nListener stopped.")
-
+    main()
