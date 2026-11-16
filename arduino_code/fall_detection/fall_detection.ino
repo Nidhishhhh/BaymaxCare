@@ -41,21 +41,22 @@ WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
 // ====================================================================================
-// 2. HARDWARE PINS & THRESHOLDS
+// 2. HARDWARE PINS & THRESHOLDS (High Sensitivity Mode)
 // ====================================================================================
 #define SDA_PIN 8
 #define SCL_PIN 9
 #define MPU_ADDR 0x68
 
-const float FREEFALL_G           = 0.45;
-const unsigned long FREEFALL_MIN_MS = 40;
-const float IMPACT_G             = 2.50;
-const unsigned long IMPACT_WINDOW_MS = 1000;
-const unsigned long SETTLE_MS    = 500;
-const float STILL_TOL_G          = 0.25;
-const float STILL_GYRO_DPS       = 40.0;
-const unsigned long INACTIVE_TIME_MS = 2000;
-const unsigned long COOLDOWN_MS  = 5000;
+// Sensitivity Tuning:
+const float FREEFALL_G           = 0.65;     // Weightlessness threshold (< 0.65g, easier to trigger)
+const unsigned long FREEFALL_MIN_MS = 25;    // Min freefall duration (25 ms)
+const float IMPACT_G             = 1.80;     // Impact threshold (> 1.80g, triggers on softer falls)
+const unsigned long IMPACT_WINDOW_MS = 1200; // Window between freefall & impact
+const unsigned long SETTLE_MS    = 400;      // Settle time after impact
+const float STILL_TOL_G          = 0.40;     // Rest acceleration tolerance (+- 0.40g around 1.0g)
+const float STILL_GYRO_DPS       = 60.0;     // Rest gyro tolerance (ignores minor tremors/noise)
+const unsigned long INACTIVE_TIME_MS = 1000; // Immobility duration (1s instead of 2s for faster response)
+const unsigned long COOLDOWN_MS  = 4000;     // Cooldown between alerts (4s)
 
 const float ACCEL_LSB_PER_G      = 4096.0;   // +-8 g scale
 const float GYRO_LSB_PER_DPS     = 65.5;     // +-500 dps scale
