@@ -178,3 +178,4 @@ if __name__ == "__main__":
         verifier.run()
     except KeyboardInterrupt:
         logger.info("Fall verifier shut down.")
+

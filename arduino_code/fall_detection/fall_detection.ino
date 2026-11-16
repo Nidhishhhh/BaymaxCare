@@ -19,6 +19,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <PubSubClient.h>
+#include <HTTPClient.h>
 
 // ====================================================================================
 // 1. NETWORK & MQTT CONFIGURATION (Change these to match your setup)
@@ -30,8 +31,10 @@ const char *WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";  // <--- Put your Wi-Fi passwo
 const char *AP_SSID       = "Baymax_FallDetector";
 const char *AP_PASSWORD   = "12345678";
 
-// MQTT Broker Configuration (IP of Raspberry Pi or Host PC running Mosquitto)
-const char *MQTT_BROKER     = "192.168.31.172";    // <--- IP of Raspberry Pi or Server
+// Central Server & MQTT Broker Configuration
+const char *SERVER_IP       = "192.168.31.172";    // <--- IP of PC running server.py
+const int   SERVER_PORT     = 8000;
+const char *MQTT_BROKER     = "broker.hivemq.com"; // Free public broker (or use SERVER_IP if Mosquitto is running)
 const int   MQTT_PORT       = 1883;
 const char *MQTT_TOPIC_FALL = "baymax/fall_alert";
 const char *PATIENT_CODE    = "P-1042";
@@ -376,7 +379,7 @@ void loop() {
             fallCount++;
             lastAlert = now;
 
-            // Publish alert to Raspberry Pi and Dashboards via MQTT
+            // 1. Publish alert to MQTT
             if (!mqttClient.connected()) {
               maintainMqtt();
             }
@@ -386,9 +389,29 @@ void loop() {
                        "{\"event\":\"fall_detected\",\"patient_code\":\"%s\",\"acc\":%.2f,\"count\":%d,\"time\":%lu}",
                        PATIENT_CODE, latestAcc, fallCount, now);
               mqttClient.publish(MQTT_TOPIC_FALL, payload);
-              Serial.printf("📡 Published to MQTT [%s]: %s\n\n", MQTT_TOPIC_FALL, payload);
+              Serial.printf("📡 Published to MQTT [%s]: %s\n", MQTT_TOPIC_FALL, payload);
             } else {
-              Serial.println("⚠ MQTT broker not reachable; alert displayed on local web page only.");
+              Serial.println("⚠ MQTT broker not connected; falling back to HTTP...");
+            }
+
+            // 2. Direct HTTP Post to FastAPI Server (Guarantees delivery to server and Raspberry Pi)
+            if (WiFi.status() == WL_CONNECTED) {
+              HTTPClient http;
+              char url[128];
+              snprintf(url, sizeof(url), "http://%s:%d/api/fall/trigger", SERVER_IP, SERVER_PORT);
+              http.begin(url);
+              http.addHeader("Content-Type", "application/json");
+              char httpPayload[128];
+              snprintf(httpPayload, sizeof(httpPayload),
+                       "{\"patient_code\":\"%s\",\"stage\":\"verifying\",\"acc\":%.2f}",
+                       PATIENT_CODE, latestAcc);
+              int code = http.POST(httpPayload);
+              if (code > 0) {
+                Serial.printf("✔ Fall alert successfully delivered to Server via HTTP (Code %d)\n\n", code);
+              } else {
+                Serial.printf("⚠ Server HTTP post failed: %s\n\n", http.errorToString(code).c_str());
+              }
+              http.end();
             }
           }
           state = IDLE;
