@@ -3,8 +3,8 @@
 // ====================================================================================
 // CONFIGURE YOUR WI-FI CREDENTIALS HERE
 // ====================================================================================
-const char* TARGET_SSID = "NidhishiPhone";    // Try "NidhishiPhone" or "NidhishJioAir"
-const char* TARGET_PASS = "YOUR_PASSWORD_HERE"; 
+const char* TARGET_SSID = "NidhishJioAir";
+const char* TARGET_PASS = "YOUR_JIO_WIFI_PASSWORD"; // <--- Put your NidhishJioAir password here 
 
 void setup() {
   Serial.begin(115200);
