@@ -17,7 +17,7 @@ Microphone Arbitration:
   - Call Finished      : Mic and speaker cleanly release back to idle hotword listening.
 
 Run:
-    python3 main.py --server-host 192.168.31.172 --cam-port 5000
+    python3 main.py --server-host 172.20.10.5 --cam-port 5000
     python3 main.py --no-hotword
     python3 main.py --no-camera
     python3 main.py --no-telehealth
@@ -82,7 +82,7 @@ def main():
 
     # Telehealth 2-Way Voice Calling
     ap.add_argument("--no-telehealth", action="store_true", help="disable telehealth 2-way voice calling")
-    ap.add_argument("--server-host", default="192.168.31.172", help="IP address of BaymaxCare server (FastAPI)")
+    ap.add_argument("--server-host", default="172.20.10.5", help="IP address of BaymaxCare server (FastAPI)")
     ap.add_argument("--server-port", type=int, default=8000, help="Port of BaymaxCare server")
     ap.add_argument("--patient-code", default="P-1042", help="Patient Code for this companion device")
 

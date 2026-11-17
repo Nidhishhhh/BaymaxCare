@@ -2325,10 +2325,12 @@
         }, 700);
       }
 
-      /* Hardcoded Raspberry Pi Camera IP (Change this IP address here if needed) */
-      const PI_IP = '192.168.31.231';
+      /* Raspberry Pi Camera IP (Configurable via localStorage or fallback) */
+      function getPiIp() {
+        return localStorage.getItem('baymaxcare_pi_ip') || '172.20.10.2';
+      }
       function getPiBaseUrl() {
-        return `http://${PI_IP}:5000`;
+        return `http://${getPiIp()}:5000`;
       }
 
       window.useSimulatedFeed = function() {

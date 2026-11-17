@@ -28,8 +28,8 @@
 // ====================================================================================
 // 1. WI-FI & MQTT SETTINGS (Update these!)
 // ====================================================================================
-const char *WIFI_SSID     = "NidhishJioAir";        // <--- Your 2.4 GHz Wi-Fi Name
-const char *WIFI_PASSWORD = "Nidhish@322005";    // <--- Your Wi-Fi Password
+const char *WIFI_SSID     = "NidhishiPhone";        // <--- Your Mobile Hotspot SSID
+const char *WIFI_PASSWORD = "12345678";             // <--- Your Mobile Hotspot Password
 
 #define DO_SCAN_ON_BOOT 0   // set to 1 to print nearby networks at startup
 

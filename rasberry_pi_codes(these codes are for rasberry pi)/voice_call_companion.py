@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("baymaxcare.voice")
 
 # Configuration
-SERVER_HOST = "192.168.31.172"  # Change to your PC/Server IP or domain
+SERVER_HOST = "172.20.10.5"  # Your PC/Server IP on the Mobile Hotspot
 SERVER_PORT = 8000
 PATIENT_CODE = "P-1042"
 DEVICE_IDENTITY = f"companion_{PATIENT_CODE}"
