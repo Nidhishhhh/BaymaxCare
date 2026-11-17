@@ -1,26 +1,23 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Main file: Multithreaded BaymaxCare In-Home Companion
 Orchestrates:
   1. Live Camera Stream (cam_server.py / server_cam.py on port 5000)
-  2. 2-Way Live Telehealth Voice Calling with Doctor & Guardian (voice_call_companion.py)
-  3. "Hey Baymax" Hotword Listener (hotword.py)
-  4. Physical Push Buttons (push_button.py on GPIO 17 & 27)
-  5. Local ElevenLabs Conversational Voice Assistant (baymax_assistant.py)
-  6. ESP32-C3 MPU-6050 Fall Detection via MQTT (mqtt_fall_listener.py on broker.hivemq.com)
+  2. "Hey Baymax" Hotword Listener (hotword.py)
+  3. Physical Push Buttons (push_button.py on GPIO 17 & 27)
+  4. Local ElevenLabs Conversational Voice Assistant (baymax_assistant.py)
+  5. ESP32-C3 MPU-6050 Fall Detection via MQTT (mqtt_fall_listener.py on broker.hivemq.com)
 
 Microphone Arbitration:
   - Idle               : Hotword listener monitors for "Hey Baymax" OR button 1 is pressed.
-  - Telehealth Call    : When Doctor/Guardian calls from dashboard, telehealth takes priority.
   - Fall Alert         : When ESP32 detects fall, interrupts conversation to check on patient.
   - Local Talking      : ElevenLabs assistant session runs when activated by user.
-  - Call Finished      : Mic and speaker cleanly release back to idle hotword listening.
+  - Finished           : Mic and speaker cleanly release back to idle hotword listening.
 
 Run:
-    python3 main.py --server-host 172.20.10.5 --cam-port 5000
+    python3 main.py --cam-port 5000
     python3 main.py --no-hotword
     python3 main.py --no-camera
-    python3 main.py --no-telehealth
     python3 main.py --no-fall
 """
 
@@ -80,12 +77,6 @@ def main():
     ap.add_argument("--no-camera", action="store_true", help="do not start the guardian live-view server")
     ap.add_argument("--cam-port", type=int, default=5000, help="port of the camera live-view web server")
 
-    # Telehealth 2-Way Voice Calling
-    ap.add_argument("--no-telehealth", action="store_true", help="disable telehealth 2-way voice calling")
-    ap.add_argument("--server-host", default="172.20.10.5", help="IP address of BaymaxCare server (FastAPI)")
-    ap.add_argument("--server-port", type=int, default=8000, help="Port of BaymaxCare server")
-    ap.add_argument("--patient-code", default="P-1042", help="Patient Code for this companion device")
-
     # ESP32 Fall Detection via MQTT
     ap.add_argument("--no-fall", action="store_true", help="disable ESP32 MQTT fall detection")
     ap.add_argument("--mqtt-broker", default="broker.hivemq.com", help="MQTT Broker for ESP32 fall detection")
@@ -96,13 +87,11 @@ def main():
 
     quit_event = threading.Event()
     start_requested = threading.Event()
-    telehealth_in_call = threading.Event()
 
     print("==========================================================")
     print("      BaymaxCare In-Home Companion Orchestrator          ")
-    print(f"      Patient Code : {args.patient_code}")
-    print(f"      Telehealth   : ws://{args.server_host}:{args.server_port}/ws/stream")
-    print(f"      Camera Port  : {args.cam_port}")
+    if not args.no_camera:
+        print(f"      Camera Port  : {args.cam_port}")
     if not args.no_fall:
         print(f"      Fall Detector: {args.mqtt_broker}:{args.mqtt_port} ({args.mqtt_topic})")
     print("==========================================================")
@@ -123,33 +112,7 @@ def main():
         except Exception as e:
             print(f"[Camera] not available ({e}) -> continuing without live view.")
 
-    # 3. Start Telehealth 2-Way Voice Call Client in Background Thread
-    telehealth_client = None
-
-    def on_telehealth_call_status(is_in_call: bool):
-        if is_in_call:
-            print("[Telehealth] 📞 Live 2-Way Call Connected with Doctor / Guardian!")
-            telehealth_in_call.set()
-            # If local assistant is talking, yield microphone to incoming doctor/guardian call
-            if assistant.is_active():
-                assistant.deactivate()
-        else:
-            print("[Telehealth] 📴 Call Ended. Resuming normal in-home monitoring.")
-            telehealth_in_call.clear()
-
-    if not args.no_telehealth:
-        try:
-            import voice_call_companion
-            telehealth_client = voice_call_companion.start_in_background(
-                host=args.server_host,
-                port=args.server_port,
-                patient_code=args.patient_code,
-                on_call_status_change=on_telehealth_call_status
-            )
-        except Exception as e:
-            print(f"[Telehealth] not available ({e}) -> continuing without telehealth voice calls.")
-
-    # 4. Start ESP32 MQTT Fall Detection Listener in Background Thread
+    # 3. Start ESP32 MQTT Fall Detection Listener in Background Thread
     fall_listener = None
     if not args.no_fall:
         try:
@@ -172,7 +135,7 @@ def main():
         except Exception as e:
             print(f"[FallDetector] not available ({e}) -> continuing without MQTT fall detection.")
 
-    # 5. Initialize Hotword Listener
+    # 4. Initialize Hotword Listener
     listener = None
     if not args.no_hotword:
         try:
@@ -185,9 +148,7 @@ def main():
 
     # 5. Push Buttons Monitor (gpiozero thread)
     def on_button_start():
-        if telehealth_in_call.is_set():
-            print("[Baymax] In-home call in progress with doctor/guardian.")
-        elif assistant.is_active():
+        if assistant.is_active():
             print("[Baymax] already talking - press button 2 to stop.")
         else:
             start_requested.set()
@@ -208,16 +169,11 @@ def main():
     # 6. Main Orchestration Loop
     try:
         while not quit_event.is_set():
-            # If an incoming telehealth doctor/guardian call is active, wait and yield audio
-            if telehealth_in_call.is_set():
-                time.sleep(0.3)
-                continue
-
             # Hotword listening when idle
-            if listener is not None and not start_requested.is_set() and not telehealth_in_call.is_set():
+            if listener is not None and not start_requested.is_set():
                 try:
-                    heard = listener.listen(lambda: start_requested.is_set() or telehealth_in_call.is_set() or quit_event.is_set())
-                    if heard and not telehealth_in_call.is_set():
+                    heard = listener.listen(lambda: start_requested.is_set() or quit_event.is_set())
+                    if heard:
                         start_requested.set()
                 except Exception as e:
                     print(f"[Hotword] Error during listening ({e}) -> falling back to push buttons.")
@@ -228,13 +184,9 @@ def main():
 
             start_requested.clear()
 
-            # Ensure telehealth call didn't begin in the interim
-            if telehealth_in_call.is_set():
-                continue
-
             time.sleep(0.2)  # Mic settle delay
             assistant.activate()
-            while assistant.is_active() and not quit_event.is_set() and not telehealth_in_call.is_set():
+            while assistant.is_active() and not quit_event.is_set():
                 time.sleep(0.2)
             start_requested.clear()  # Ignore presses made during the session
 
@@ -245,9 +197,6 @@ def main():
         assistant.shutdown()
         if cam is not None:
             try: cam.shutdown()
-            except Exception: pass
-        if telehealth_client is not None:
-            try: telehealth_client.shutdown()
             except Exception: pass
         if fall_listener is not None:
             try: fall_listener.shutdown()
